@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0E6B4F">
+<title>DawaKhata — Medical Store Reminder</title>
+<style>
+:root{
+  --green:#0E6B4F; --green-dark:#0A523C; --mint:#Eef7F2; --card:#FFFFFF;
+  --ink:#1B2B24; --muted:#5C6F66; --line:#DCE9E2;
+  --red:#C62828; --red-bg:#FDECEC;
+  --amber:#B45309; --amber-bg:#FFF4E0;
+  --blue:#1D4ED8; --blue-bg:#E8EEFF;
+  --wa:#25D366;
+  --radius:14px;
+}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+  background:var(--mint); color:var(--ink); font-size:15px;
+  padding-bottom:76px;
+}
+/* Header */
+header{
+  background:var(--green); color:#fff; padding:14px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:50;
+}
+header .brand{display:flex; align-items:center; gap:10px;}
+.cross{
+  width:30px; height:30px; background:#fff; border-radius:8px; position:relative; flex-shrink:0;
+}
+.cross::before,.cross::after{content:''; position:absolute; background:var(--green); border-radius:2px;}
+.cross::before{width:16px; height:6px; top:12px; left:7px;}
+.cross::after{width:6px; height:16px; top:7px; left:12px;}
+header h1{font-size:18px; font-weight:800; letter-spacing:.3px;}
+header .sub{font-size:11px; opacity:.85; font-weight:500;}
+.icon-btn{
+  background:rgba(255,255,255,.15); border:none; color:#fff; font-size:13px; font-weight:700;
+  padding:8px 12px; border-radius:10px; cursor:pointer;
+}
+/* Screens */
+.screen{display:none; padding:14px; max-width:640px; margin:0 auto;}
+.screen.active{display:block;}
+/* Section labels */
+.sec-label{
+  font-size:12px; font-weight:800; letter-spacing:.8px; text-transform:uppercase;
+  margin:16px 2px 8px; display:flex; align-items:center; gap:8px;
+}
+.sec-label .count{
+  background:var(--ink); color:#fff; border-radius:20px; padding:1px 8px; font-size:11px;
+}
+.sec-label.red{color:var(--red);} .sec-label.red .count{background:var(--red);}
+.sec-label.amber{color:var(--amber);} .sec-label.amber .count{background:var(--amber);}
+.sec-label.blue{color:var(--blue);} .sec-label.blue .count{background:var(--blue);}
+.sec-label.green{color:var(--green);} .sec-label.green .count{background:var(--green);}
+/* Cards */
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  padding:12px 14px; margin-bottom:10px;
+}
+.card.overdue{border-left:5px solid var(--red);}
+.card.today{border-left:5px solid var(--amber);}
+.card.soon{border-left:5px solid var(--blue);}
+.pt-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+.pt-name{font-size:16px; font-weight:800;}
+.pt-mob{font-size:12.5px; color:var(--muted); margin-top:2px;}
+.due-chip{
+  font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:20px; white-space:nowrap;
+}
+.due-chip.overdue{background:var(--red-bg); color:var(--red);}
+.due-chip.today{background:var(--amber-bg); color:var(--amber);}
+.due-chip.soon{background:var(--blue-bg); color:var(--blue);}
+.due-chip.ok{background:var(--mint); color:var(--green);}
+.pt-meds{font-size:13px; color:var(--ink); margin-top:8px; line-height:1.5;}
+.pt-meds b{color:var(--green-dark);}
+.pt-actions{display:flex; gap:8px; margin-top:12px;}
+.btn{
+  border:none; border-radius:10px; padding:10px 12px; font-size:13.5px; font-weight:800;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; flex:1;
+}
+.btn-wa{background:var(--wa); color:#fff;}
+.btn-refill{background:var(--green); color:#fff;}
+.btn-ghost{background:var(--mint); color:var(--green-dark); flex:0 0 auto; padding:10px 14px;}
+.btn-red{background:var(--red-bg); color:var(--red);}
+.btn:active{transform:scale(.97);}
+/* Empty state */
+.empty{
+  text-align:center; padding:44px 20px; color:var(--muted);
+}
+.empty .big{font-size:40px; margin-bottom:10px;}
+.empty p{font-size:14px; line-height:1.6;}
+/* Search */
+.search{
+  width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:12px;
+  font-size:15px; background:#fff; margin-bottom:4px;
+}
+.search:focus{outline:none; border-color:var(--green);}
+/* Form */
+.form-card{background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+label{font-size:12.5px; font-weight:800; color:var(--green-dark); display:block; margin:14px 0 5px;}
+label:first-child{margin-top:0;}
+input,select{
+  width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px;
+  font-size:15px; background:#fff; font-family:inherit;
+}
+input:focus{outline:none; border-color:var(--green);}
+.med-row{
+  display:grid; grid-template-columns:1fr 74px 64px 34px; gap:6px; margin-bottom:8px; align-items:center;
+}
+.med-row input{padding:10px 8px; font-size:14px;}
+.med-head{
+  display:grid; grid-template-columns:1fr 74px 64px 34px; gap:6px;
+  font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;
+  margin-bottom:4px; padding:0 2px;
+}
+.del-med{
+  background:var(--red-bg); color:var(--red); border:none; border-radius:8px;
+  width:32px; height:38px; font-size:16px; cursor:pointer;
+}
+.add-med{
+  background:var(--mint); color:var(--green-dark); border:1.5px dashed var(--green);
+  border-radius:10px; padding:10px; width:100%; font-size:13.5px; font-weight:800; cursor:pointer; margin-top:2px;
+}
+.save-btn{
+  background:var(--green); color:#fff; border:none; border-radius:12px; padding:14px;
+  width:100%; font-size:16px; font-weight:800; margin-top:18px; cursor:pointer;
+}
+/* Detail */
+.detail-hist{font-size:13px; color:var(--muted); line-height:1.7;}
+.detail-hist b{color:var(--ink);}
+/* Bottom nav */
+nav{
+  position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line);
+  display:flex; z-index:60; max-width:640px; margin:0 auto;
+}
+nav button{
+  flex:1; background:none; border:none; padding:10px 4px 12px; cursor:pointer;
+  font-size:11px; font-weight:800; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:3px;
+}
+nav button .nv-ic{font-size:20px;}
+nav button.active{color:var(--green);}
+nav .badge{
+  position:absolute; margin-left:26px; margin-top:-2px; background:var(--red); color:#fff;
+  font-size:10px; border-radius:20px; padding:1px 6px; font-weight:800;
+}
+/* Toast */
+#toast{
+  position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
+  background:var(--ink); color:#fff; padding:10px 18px; border-radius:24px; font-size:13.5px;
+  font-weight:700; opacity:0; transition:opacity .3s; z-index:100; pointer-events:none; white-space:nowrap;
+}
+#toast.show{opacity:1;}
+/* Modal */
+.modal-bg{
+  position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:80; display:none;
+  align-items:flex-end; justify-content:center;
+}
+.modal-bg.show{display:flex;}
+.modal{
+  background:#fff; border-radius:18px 18px 0 0; padding:18px 16px 24px; width:100%; max-width:640px;
+  max-height:85vh; overflow-y:auto;
+}
+.modal h3{font-size:17px; font-weight:800; margin-bottom:4px;}
+.settings-row{margin-top:12px;}
+hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
+.mini-note{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.5;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="cross"></div>
+    <div>
+      <h1>DawaKhata</h1>
+      <div class="sub" id="shopSub">Medical Store Reminder</div>
+    </div>
+  </div>
+  <button class="icon-btn" onclick="openSettings()">⚙️</button>
+</header>
+
+<!-- DUE SCREEN -->
+<div class="screen active" id="scr-due">
+  <div id="dueList"></div>
+</div>
+
+<!-- PATIENTS SCREEN -->
+<div class="screen" id="scr-patients">
+  <input class="search" id="searchBox" placeholder="🔍 Naam ya mobile se dhundo..." oninput="renderPatients()">
+  <div id="patientList"></div>
+</div>
+
+<!-- ADD/EDIT SCREEN -->
+<div class="screen" id="scr-add">
+  <div class="form-card">
+    <h3 id="formTitle" style="margin-bottom:6px;">Naya Patient</h3>
+    <label>Patient ka naam *</label>
+    <input id="fName" placeholder="Jaise: Sharma ji">
+    <label>Mobile number (WhatsApp) *</label>
+    <input id="fMobile" type="tel" placeholder="10 digit number" maxlength="12">
+    <label>Dawaiyaan *</label>
+    <div class="med-head"><span>Medicine</span><span>Price ₹</span><span>Din</span><span></span></div>
+    <div id="medRows"></div>
+    <button class="add-med" onclick="addMedRow()">+ Aur dawai jodo</button>
+    <label>Aakhri kharid ki date</label>
+    <input id="fDate" type="date">
+    <button class="save-btn" id="saveBtn" onclick="savePatient()">💾 Save Karo</button>
+    <button class="btn btn-red" id="deleteBtn" style="margin-top:10px; width:100%; display:none;" onclick="deletePatient()">🗑️ Patient Delete Karo</button>
+  </div>
+</div>
+
+<nav>
+  <button id="nav-due" class="active" onclick="showScreen('due')"><span class="nv-ic">⏰</span>Due List<span class="badge" id="dueBadge" style="display:none;"></span></button>
+  <button id="nav-patients" onclick="showScreen('patients')"><span class="nv-ic">👥</span>Patients</button>
+  <button id="nav-add" onclick="openAddForm()"><span class="nv-ic">➕</span>Naya</button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg" id="settingsModal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h3>⚙️ Settings & Backup</h3>
+    <div class="settings-row">
+      <label>Shop ka naam (WhatsApp message mein jayega)</label>
+      <input id="setShop" placeholder="Jaise: Shri Medical Store">
+    </div>
+    <div class="settings-row">
+      <label>Kitne din pehle reminder due dikhaye</label>
+      <select id="setLead">
+        <option value="2">2 din pehle</option>
+        <option value="3" selected>3 din pehle</option>
+        <option value="5">5 din pehle</option>
+      </select>
+    </div>
+    <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+    <hr class="soft">
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="exportData()">⬇️ Backup Export</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('importFile').click()">⬆️ Backup Import</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
+    <p class="mini-note">Backup file phone mein save hogi. Hafte mein ek baar export zaroor karein — phone data clear hone pe yahi file se sab wapas aa jayega.</p>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-bg" id="histModal" onclick="if(event.target===this)closeHist()">
+  <div class="modal" id="histContent"></div>
+</div>
+
+<script>
+// ---------- Data ----------
+let patients = [];
+let settings = { shop:'', lead:3 };
+let editingId = null;
+
+function load(){
+  try{ patients = JSON.parse(localStorage.getItem('dk_patients')) || []; }catch(e){ patients = []; }
+  try{ settings = Object.assign(settings, JSON.parse(localStorage.getItem('dk_settings'))||{}); }catch(e){}
+  document.getElementById('shopSub').textContent = settings.shop || 'Medical Store Reminder';
+}
+function save(){
+  localStorage.setItem('dk_patients', JSON.stringify(patients));
+  localStorage.setItem('dk_settings', JSON.stringify(settings));
+}
+
+// ---------- Helpers ----------
+const DAY = 86400000;
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function daysLeft(med){
+  if(!med.last || !med.days) return 999;
+  const due = new Date(med.last).getTime() + med.days*DAY;
+  const now = new Date(todayStr()).getTime();
+  return Math.round((due - now)/DAY);
+}
+function patientDue(p){ return Math.min(...p.medicines.map(daysLeft)); }
+function fmtDate(s){
+  if(!s) return '-';
+  const d = new Date(s);
+  return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+}
+function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function normMobile(m){
+  let d = String(m).replace(/\D/g,'');
+  if(d.length===10) d = '91'+d;
+  return d;
+}
+
+// ---------- Navigation ----------
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('scr-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='due') renderDue();
+  if(name==='patients') renderPatients();
+  window.scrollTo(0,0);
+}
+
+// ---------- Due List ----------
+function dueChip(dl){
+  if(dl < 0) return '<span class="due-chip overdue">'+Math.abs(dl)+' din late</span>';
+  if(dl === 0) return '<span class="due-chip today">Aaj due</span>';
+  if(dl <= settings.lead) return '<span class="due-chip soon">'+dl+' din baad</span>';
+  return '<span class="due-chip ok">'+dl+' din baaki</span>';
+}
+function dueCard(p, cls){
+  const dl = patientDue(p);
+  const dueMeds = p.medicines.filter(m=>daysLeft(m) <= settings.lead);
+  const medStr = dueMeds.map(m=>'<b>'+esc(m.name)+'</b> ₹'+m.price+' ('+fmtDate(m.last)+' ko liya, '+m.days+' din)').join('<br>');
+  return '<div class="card '+cls+'">'+
+    '<div class="pt-top"><div><div class="pt-name">'+esc(p.name)+'</div><div class="pt-mob">📱 '+esc(p.mobile)+'</div></div>'+dueChip(dl)+'</div>'+
+    '<div class="pt-meds">'+medStr+'</div>'+
+    '<div class="pt-actions">'+
+      '<button class="btn btn-wa" onclick="sendWA(\''+p.id+'\')">💬 WhatsApp</button>'+
+      '<button class="btn btn-refill" onclick="refill(\''+p.id+'\')">✓ Refill Diya</button>'+
+    '</div></div>';
+}
+function renderDue(){
+  const el = document.getElementById('dueList');
+  const overdue=[], today=[], soon=[];
+  patients.forEach(p=>{
+    const dl = patientDue(p);
+    if(dl < 0) overdue.push(p);
+    else if(dl === 0) today.push(p);
+    else if(dl <= settings.lead) soon.push(p);
+  });
+  overdue.sort((a,b)=>patientDue(a)-patientDue(b));
+  soon.sort((a,b)=>patientDue(a)-patientDue(b));
+  let html = '';
+  if(overdue.length) html += '<div class="sec-label red">🔴 Late Ho Gaye <span class="count">'+overdue.length+'</span></div>' + overdue.map(p=>dueCard(p,'overdue')).join('');
+  if(today.length) html += '<div class="sec-label amber">🟡 Aaj Due <span class="count">'+today.length+'</span></div>' + today.map(p=>dueCard(p,'today')).join('');
+  if(soon.length) html += '<div class="sec-label blue">🔵 Aane Waale Din <span class="count">'+soon.length+'</span></div>' + soon.map(p=>dueCard(p,'soon')).join('');
+  if(!html){
+    html = patients.length
+      ? '<div class="empty"><div class="big">✅</div><p><b>Sab clear hai!</b><br>Abhi koi dawai due nahi hai.</p></div>'
+      : '<div class="empty"><div class="big">💊</div><p><b>DawaKhata mein swagat hai!</b><br>Neeche <b>➕ Naya</b> dabakar pehla patient jodo.</p></div>';
+  }
+  el.innerHTML = html;
+  const n = overdue.length + today.length;
+  const badge = document.getElementById('dueBadge');
+  if(n>0){ badge.textContent=n; badge.style.display='inline'; } else badge.style.display='none';
+}
+
+// ---------- Patients List ----------
+function renderPatients(){
+  const q = (document.getElementById('searchBox').value||'').toLowerCase().trim();
+  const el = document.getElementById('patientList');
+  let list = patients.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(q) list = list.filter(p=>p.name.toLowerCase().includes(q) || String(p.mobile).includes(q));
+  if(!list.length){
+    el.innerHTML = '<div class="empty"><div class="big">🔍</div><p>'+(q?'Koi patient nahi mila.':'Abhi koi patient nahi hai.<br><b>➕ Naya</b> se jodo.')+'</p></div>';
+    return;
+  }
+  el.innerHTML = '<div class="sec-label green">👥 Total Patients <span class="count">'+list.length+'</span></div>' + list.map(p=>{
+    const dl = patientDue(p);
+    const meds = p.medicines.map(m=>'<b>'+esc(m.name)+'</b> ₹'+m.price).join(' · ');
+    return '<div class="card">'+
+      '<div class="pt-top"><div><div class="pt-name">'+esc(p.name)+'</div><div class="pt-mob">📱 '+esc(p.mobile)+'</div></div>'+dueChip(dl)+'</div>'+
+      '<div class="pt-meds">'+meds+'</div>'+
+      '<div class="pt-actions">'+
+        '<button class="btn btn-ghost" onclick="openEdit(\''+p.id+'\')">✏️ Edit</button>'+
+        '<button class="btn btn-ghost" onclick="showHist(\''+p.id+'\')">📜 History</button>'+
+        '<button class="btn btn-refill" onclick="refill(\''+p.id+'\')">✓ Refill</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+// ---------- WhatsApp ----------
+function sendWA(id){
+  const p = patients.find(x=>x.id===id); if(!p) return;
+  const dueMeds = p.medicines.filter(m=>daysLeft(m) <= settings.lead).map(m=>m.name);
+  const meds = dueMeds.length ? dueMeds.join(', ') : p.medicines.map(m=>m.name).join(', ');
+  const shop = settings.shop || 'Medical Store';
+  const msg = 'Namaste '+p.name+' ji 🙏\n\n'+shop+' se yaad dilana tha — aapki dawai *'+meds+'* khatam hone waali hai.\n\nShop pe available hai, kabhi bhi le jayein. Dhanyavaad! 💊';
+  window.open('https://wa.me/'+normMobile(p.mobile)+'?text='+encodeURIComponent(msg), '_blank');
+}
+
+// ---------- Refill ----------
+function refill(id){
+  const p = patients.find(x=>x.id===id); if(!p) return;
+  const dueMeds = p.medicines.filter(m=>daysLeft(m) <= settings.lead);
+  const target = dueMeds.length ? dueMeds : p.medicines;
+  const names = target.map(m=>m.name).join(', ');
+  const total = target.reduce((s,m)=>s+(Number(m.price)||0),0);
+  if(!confirm(p.name+' ko refill diya?\n\nDawai: '+names+'\nTotal: ₹'+total)) return;
+  const t = todayStr();
+  target.forEach(m=>m.last=t);
+  p.history = p.history || [];
+  p.history.unshift({date:t, items:target.map(m=>m.name), total:total});
+  if(p.history.length > 50) p.history.length = 50;
+  save(); renderDue(); renderPatients();
+  toast('✓ Refill save ho gaya — ₹'+total);
+}
+
+// ---------- History ----------
+function showHist(id){
+  const p = patients.find(x=>x.id===id); if(!p) return;
+  const h = p.history || [];
+  const totalSpent = h.reduce((s,e)=>s+(e.total||0),0);
+  let html = '<h3>📜 '+esc(p.name)+' — History</h3>';
+  html += '<p class="mini-note">Total kharidari: <b>₹'+totalSpent+'</b> ('+h.length+' baar)</p><hr class="soft">';
+  html += h.length
+    ? '<div class="detail-hist">'+h.map(e=>'<b>'+fmtDate(e.date)+'</b> — '+esc(e.items.join(', '))+' — <b>₹'+e.total+'</b>').join('<br>')+'</div>'
+    : '<p class="mini-note">Abhi koi refill record nahi hai.</p>';
+  document.getElementById('histContent').innerHTML = html;
+  document.getElementById('histModal').classList.add('show');
+}
+function closeHist(){ document.getElementById('histModal').classList.remove('show'); }
+
+// ---------- Add / Edit Form ----------
+function medRowHTML(m){
+  m = m || {name:'', price:'', days:30};
+  return '<div class="med-row">'+
+    '<input class="m-name" placeholder="Dawai ka naam" value="'+esc(m.name)+'">'+
+    '<input class="m-price" type="number" placeholder="₹" value="'+esc(m.price)+'">'+
+    '<input class="m-days" type="number" placeholder="30" value="'+esc(m.days)+'">'+
+    '<button class="del-med" onclick="this.parentElement.remove()">✕</button></div>';
+}
+function addMedRow(m){ document.getElementById('medRows').insertAdjacentHTML('beforeend', medRowHTML(m)); }
+function openAddForm(){
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'Naya Patient';
+  document.getElementById('fName').value = '';
+  document.getElementById('fMobile').value = '';
+  document.getElementById('fDate').value = todayStr();
+  document.getElementById('medRows').innerHTML = '';
+  addMedRow();
+  document.getElementById('deleteBtn').style.display = 'none';
+  showScreen('add');
+}
+function openEdit(id){
+  const p = patients.find(x=>x.id===id); if(!p) return;
+  editingId = id;
+  document.getElementById('formTitle').textContent = '✏️ Edit: '+p.name;
+  document.getElementById('fName').value = p.name;
+  document.getElementById('fMobile').value = p.mobile;
+  document.getElementById('fDate').value = p.medicines[0] ? p.medicines[0].last : todayStr();
+  document.getElementById('medRows').innerHTML = '';
+  p.medicines.forEach(m=>addMedRow(m));
+  document.getElementById('deleteBtn').style.display = 'block';
+  showScreen('add');
+}
+function savePatient(){
+  const name = document.getElementById('fName').value.trim();
+  const mobile = document.getElementById('fMobile').value.trim();
+  const date = document.getElementById('fDate').value || todayStr();
+  if(!name){ toast('⚠️ Naam daalo'); return; }
+  if(normMobile(mobile).length < 12){ toast('⚠️ Sahi 10-digit mobile daalo'); return; }
+  const meds = [];
+  document.querySelectorAll('#medRows .med-row').forEach(r=>{
+    const n = r.querySelector('.m-name').value.trim();
+    const pr = Number(r.querySelector('.m-price').value)||0;
+    const dy = Number(r.querySelector('.m-days').value)||30;
+    if(n) meds.push({name:n, price:pr, days:dy, last:date});
+  });
+  if(!meds.length){ toast('⚠️ Kam se kam ek dawai daalo'); return; }
+  if(editingId){
+    const p = patients.find(x=>x.id===editingId);
+    const oldLast = {};
+    p.medicines.forEach(m=>oldLast[m.name.toLowerCase()]=m.last);
+    meds.forEach(m=>{ if(oldLast[m.name.toLowerCase()] && document.getElementById('fDate').value === '') m.last = oldLast[m.name.toLowerCase()]; });
+    p.name=name; p.mobile=mobile; p.medicines=meds;
+    toast('✓ Update ho gaya');
+  } else {
+    patients.push({id:'p'+Date.now(), name:name, mobile:mobile, medicines:meds, history:[{date:date, items:meds.map(m=>m.name), total:meds.reduce((s,m)=>s+m.price,0)}]});
+    toast('✓ '+name+' add ho gaye');
+  }
+  save(); showScreen('due');
+}
+function deletePatient(){
+  if(!editingId) return;
+  const p = patients.find(x=>x.id===editingId);
+  if(!confirm(p.name+' ka poora record delete karein? Ye wapas nahi aayega.')) return;
+  patients = patients.filter(x=>x.id!==editingId);
+  save(); toast('🗑️ Delete ho gaya'); showScreen('patients');
+}
+
+// ---------- Settings ----------
+function openSettings(){
+  document.getElementById('setShop').value = settings.shop;
+  document.getElementById('setLead').value = settings.lead;
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('show'); }
+function saveSettings(){
+  settings.shop = document.getElementById('setShop').value.trim();
+  settings.lead = Number(document.getElementById('setLead').value)||3;
+  save(); load(); closeSettings(); renderDue();
+  toast('✓ Settings save ho gayi');
+}
+
+// ---------- Backup ----------
+function exportData(){
+  const blob = new Blob([JSON.stringify({patients:patients, settings:settings, exported:todayStr()}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dawakhata_backup_'+todayStr()+'.json';
+  a.click();
+  toast('⬇️ Backup download ho gaya');
+}
+function importData(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!Array.isArray(data.patients)) throw 'bad';
+      if(!confirm(data.patients.length+' patients import honge. Abhi ka data replace ho jayega. Pakka?')) return;
+      patients = data.patients;
+      if(data.settings) settings = Object.assign(settings, data.settings);
+      save(); load(); closeSettings(); renderDue(); renderPatients();
+      toast('✓ '+patients.length+' patients import ho gaye');
+    }catch(err){ toast('⚠️ File sahi nahi hai'); }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+// ---------- Init ----------
+load();
+renderDue();
+</script>
+</body>
+</html>
