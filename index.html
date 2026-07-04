@@ -146,6 +146,34 @@ nav .badge{
   position:absolute; margin-left:26px; margin-top:-2px; background:var(--red); color:#fff;
   font-size:10px; border-radius:20px; padding:1px 6px; font-weight:800;
 }
+/* Lock screen */
+#lockScreen{
+  position:fixed; inset:0; background:var(--mint); z-index:200;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:28px; text-align:center;
+}
+#lockScreen .cross{transform:scale(1.7); margin-bottom:26px; box-shadow:0 4px 14px rgba(14,107,79,.25);}
+#lockScreen h2{font-size:22px; font-weight:800; color:var(--green-dark); margin-bottom:6px;}
+#lockScreen p{font-size:13.5px; color:var(--muted); line-height:1.6; max-width:320px;}
+.dev-box{
+  background:#fff; border:2px dashed var(--green); border-radius:12px;
+  padding:12px 22px; margin:18px 0 6px;
+}
+.dev-box .dv-label{font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.8px;}
+.dev-box .dv-id{font-size:24px; font-weight:800; color:var(--green-dark); letter-spacing:2px; font-family:monospace;}
+#actCode{
+  width:100%; max-width:280px; text-align:center; font-size:20px; letter-spacing:3px;
+  font-family:monospace; font-weight:700; text-transform:uppercase; margin-top:16px;
+}
+.lock-btn{
+  background:var(--green); color:#fff; border:none; border-radius:12px; padding:14px;
+  width:100%; max-width:280px; font-size:16px; font-weight:800; margin-top:12px; cursor:pointer;
+}
+.lock-wa{
+  background:var(--wa); color:#fff; text-decoration:none; border-radius:12px; padding:13px;
+  width:100%; max-width:280px; font-size:14.5px; font-weight:800; margin-top:10px;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
 /* Toast */
 #toast{
   position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
@@ -220,6 +248,20 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
 
 <div id="toast"></div>
 
+<!-- ACTIVATION LOCK SCREEN -->
+<div id="lockScreen">
+  <div class="cross"></div>
+  <h2>DawaKhata Activation</h2>
+  <p>Ye app activate karne ke liye code chahiye. Neeche apna Device ID WhatsApp karein, code milne pe yahin daalein.</p>
+  <div class="dev-box">
+    <div class="dv-label">Aapka Device ID</div>
+    <div class="dv-id" id="devId">DK-......</div>
+  </div>
+  <input id="actCode" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off">
+  <button class="lock-btn" onclick="activate()">🔓 Activate Karo</button>
+  <a class="lock-wa" id="lockWA" target="_blank">💬 Code ke liye WhatsApp karein</a>
+</div>
+
 <!-- SETTINGS MODAL -->
 <div class="modal-bg" id="settingsModal" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
@@ -253,6 +295,51 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
 </div>
 
 <script>
+// ---------- Activation (device-locked, lifetime) ----------
+var OWNER_WA = '919999999999'; // <<< APNA WHATSAPP NUMBER YAHAN DAALO (91 ke saath)
+var LIC_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function getDeviceId(){
+  var d = localStorage.getItem('dk_device');
+  if(!d){
+    d = '';
+    for(var i=0;i<6;i++) d += LIC_CHARS[Math.floor(Math.random()*LIC_CHARS.length)];
+    localStorage.setItem('dk_device', d);
+  }
+  return d;
+}
+function makeCode(devId){
+  var s = String(devId).toUpperCase().replace('DK-','') + 'DK#Ankush@2026$Kirana';
+  var h1 = 0x811c9dc5, h2 = 0x1b873593;
+  for(var i=0;i<s.length;i++){
+    h1 = Math.imul(h1 ^ s.charCodeAt(i), 16777619) >>> 0;
+    h2 = (Math.imul(h2, 31) + s.charCodeAt(i)*7 + i*13) >>> 0;
+  }
+  var n = (h1 ^ h2) >>> 0, m = (h1 + h2) >>> 0, code = '';
+  for(var j=0;j<4;j++){ code += LIC_CHARS[n % 31]; n = Math.floor(n/31); }
+  code += '-';
+  for(var k=0;k<4;k++){ code += LIC_CHARS[m % 31]; m = Math.floor(m/31); }
+  return code;
+}
+function isActivated(){ return localStorage.getItem('dk_key') === makeCode(getDeviceId()); }
+function activate(){
+  var c = document.getElementById('actCode').value.trim().toUpperCase().replace(/\s/g,'');
+  if(c.length===8 && c.indexOf('-')===-1) c = c.slice(0,4)+'-'+c.slice(4);
+  if(c === makeCode(getDeviceId())){
+    localStorage.setItem('dk_key', c);
+    document.getElementById('lockScreen').style.display = 'none';
+    toast('✓ App lifetime ke liye activate ho gaya!');
+    renderDue();
+  } else {
+    toast('⚠️ Galat code — dobara check karein');
+  }
+}
+function setupLock(){
+  var id = getDeviceId();
+  document.getElementById('devId').textContent = 'DK-'+id;
+  var msg = 'Namaste! Mujhe DawaKhata app ka activation code chahiye.\nMera Device ID: DK-'+id;
+  document.getElementById('lockWA').href = 'https://wa.me/'+OWNER_WA+'?text='+encodeURIComponent(msg);
+}
+
 // ---------- Data ----------
 let patients = [];
 let settings = { shop:'', lead:3 };
@@ -527,7 +614,12 @@ function importData(ev){
 
 // ---------- Init ----------
 load();
-renderDue();
+if(isActivated()){
+  document.getElementById('lockScreen').style.display = 'none';
+  renderDue();
+} else {
+  setupLock();
+}
 </script>
 </body>
 </html>
