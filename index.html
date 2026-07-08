@@ -195,6 +195,23 @@ nav .badge{
 .settings-row{margin-top:12px;}
 hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
 .mini-note{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.5;}
+/* Dashboard */
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.stat-grid.cols3{grid-template-columns:1fr 1fr 1fr;}
+.stat-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px 10px; text-align:center;}
+.stat-card .num{font-size:23px; font-weight:800; color:var(--green-dark);}
+.stat-card .lbl{font-size:10.5px; color:var(--muted); font-weight:700; margin-top:4px; text-transform:uppercase; letter-spacing:.3px; line-height:1.3;}
+.stat-card.red .num{color:var(--red);}
+.stat-card.amber .num{color:var(--amber);}
+.bar-item{margin-bottom:12px;}
+.bar-top{display:flex; justify-content:space-between; font-size:13px; font-weight:700; margin-bottom:5px;}
+.bar-top .bc{color:var(--muted); font-weight:800;}
+.bar-track{background:var(--mint); border-radius:8px; height:10px; overflow:hidden;}
+.bar-fill{background:var(--green); height:100%; border-radius:8px;}
+/* Photo */
+.btn-photo{flex:0 0 46px !important; padding:10px 0 !important; background:var(--mint); color:var(--green-dark); font-size:16px;}
+.btn-photo.has{background:#fff; border:1.5px solid var(--green); color:var(--green);}
+#photoImg{width:100%; border-radius:12px; margin-bottom:12px; display:block;}
 </style>
 </head>
 <body>
@@ -240,9 +257,15 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
   </div>
 </div>
 
+<!-- REPORT SCREEN -->
+<div class="screen" id="scr-report">
+  <div id="reportContent"></div>
+</div>
+
 <nav>
   <button id="nav-due" class="active" onclick="showScreen('due')"><span class="nv-ic">⏰</span>Due List<span class="badge" id="dueBadge" style="display:none;"></span></button>
   <button id="nav-patients" onclick="showScreen('patients')"><span class="nv-ic">👥</span>Patients</button>
+  <button id="nav-report" onclick="showScreen('report')"><span class="nv-ic">📊</span>Report</button>
   <button id="nav-add" onclick="openAddForm()"><span class="nv-ic">➕</span>Naya</button>
 </nav>
 
@@ -294,9 +317,22 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
   <div class="modal" id="histContent"></div>
 </div>
 
+<!-- PHOTO -->
+<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;" onchange="onPhotoFile(event)">
+<div class="modal-bg" id="photoModal" onclick="if(event.target===this)closePhotoModal()">
+  <div class="modal" style="text-align:center;">
+    <h3 style="margin-bottom:12px;">📄 Prescription</h3>
+    <img id="photoImg" alt="Prescription photo">
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="replacePhoto()">🔄 Badlo</button>
+      <button class="btn btn-red" style="flex:1;" onclick="removePhoto()">🗑️ Hatao</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ---------- Activation (device-locked, lifetime) ----------
-var OWNER_WA = '919765838383'; // <<< APNA WHATSAPP NUMBER YAHAN DAALO (91 ke saath)
+var OWNER_WA = '919999999999'; // <<< APNA WHATSAPP NUMBER YAHAN DAALO (91 ke saath)
 var LIC_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function getDeviceId(){
   var d = localStorage.getItem('dk_device');
@@ -329,6 +365,7 @@ function activate(){
     document.getElementById('lockScreen').style.display = 'none';
     toast('✓ App lifetime ke liye activate ho gaya!');
     renderDue();
+    loadPhotoIndex().then(function(){ renderDue(); renderPatients(); });
   } else {
     toast('⚠️ Galat code — dobara check karein');
   }
@@ -338,6 +375,120 @@ function setupLock(){
   document.getElementById('devId').textContent = 'DK-'+id;
   var msg = 'Namaste! Mujhe DawaKhata app ka activation code chahiye.\nMera Device ID: DK-'+id;
   document.getElementById('lockWA').href = 'https://wa.me/'+OWNER_WA+'?text='+encodeURIComponent(msg);
+}
+
+// ---------- Prescription Photos (IndexedDB) ----------
+var photoIds = new Set();
+var photoTargetId = null;
+var _dbPromise = null;
+function openPhotoDB(){
+  if(_dbPromise) return _dbPromise;
+  _dbPromise = new Promise(function(resolve, reject){
+    var req = indexedDB.open('dk_photos', 1);
+    req.onupgradeneeded = function(e){ e.target.result.createObjectStore('rx'); };
+    req.onsuccess = function(e){ resolve(e.target.result); };
+    req.onerror = function(e){ reject(e); };
+  });
+  return _dbPromise;
+}
+function savePhotoBlob(id, blob){
+  return openPhotoDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction('rx', 'readwrite');
+      tx.objectStore('rx').put(blob, id);
+      tx.oncomplete = function(){ resolve(true); };
+      tx.onerror = function(e){ reject(e); };
+    });
+  });
+}
+function getPhotoBlob(id){
+  return openPhotoDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction('rx', 'readonly');
+      var req = tx.objectStore('rx').get(id);
+      req.onsuccess = function(){ resolve(req.result || null); };
+      req.onerror = function(e){ reject(e); };
+    });
+  });
+}
+function deletePhotoBlob(id){
+  return openPhotoDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction('rx', 'readwrite');
+      tx.objectStore('rx').delete(id);
+      tx.oncomplete = function(){ resolve(true); };
+      tx.onerror = function(e){ reject(e); };
+    });
+  });
+}
+function loadPhotoIndex(){
+  return openPhotoDB().then(function(db){
+    return new Promise(function(resolve){
+      try{
+        var tx = db.transaction('rx', 'readonly');
+        var req = tx.objectStore('rx').getAllKeys();
+        req.onsuccess = function(){ photoIds = new Set(req.result); resolve(); };
+        req.onerror = function(){ resolve(); };
+      }catch(e){ resolve(); }
+    });
+  });
+}
+function compressImage(file, maxDim, quality){
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function(){
+      var w = img.width, h = img.height;
+      if(w >= h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+      else if(h > w && h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob){ URL.revokeObjectURL(url); resolve(blob); }, 'image/jpeg', quality);
+    };
+    img.onerror = function(e){ URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+function photoBtnClick(id){
+  photoTargetId = id;
+  if(photoIds.has(id)) viewPhoto(id);
+  else document.getElementById('photoInput').click();
+}
+function viewPhoto(id){
+  getPhotoBlob(id).then(function(blob){
+    if(!blob){ toast('⚠️ Photo nahi mili'); return; }
+    document.getElementById('photoImg').src = URL.createObjectURL(blob);
+    document.getElementById('photoModal').classList.add('show');
+  });
+}
+function closePhotoModal(){ document.getElementById('photoModal').classList.remove('show'); }
+function onPhotoFile(ev){
+  var file = ev.target.files[0];
+  ev.target.value = '';
+  if(!file || !photoTargetId) return;
+  toast('⏳ Photo save ho rahi hai...');
+  compressImage(file, 1000, 0.72).then(function(blob){
+    return savePhotoBlob(photoTargetId, blob);
+  }).then(function(){
+    photoIds.add(photoTargetId);
+    toast('✓ Prescription photo save ho gayi');
+    renderDue(); renderPatients();
+  }).catch(function(){ toast('⚠️ Photo save nahi ho payi'); });
+}
+function replacePhoto(){
+  closePhotoModal();
+  document.getElementById('photoInput').click();
+}
+function removePhoto(){
+  if(!photoTargetId) return;
+  if(!confirm('Prescription photo delete karein?')) return;
+  deletePhotoBlob(photoTargetId).then(function(){
+    photoIds.delete(photoTargetId);
+    closePhotoModal();
+    toast('🗑️ Photo delete ho gayi');
+    renderDue(); renderPatients();
+  });
 }
 
 // ---------- Data ----------
@@ -389,6 +540,7 @@ function showScreen(name){
   document.getElementById('nav-'+name).classList.add('active');
   if(name==='due') renderDue();
   if(name==='patients') renderPatients();
+  if(name==='report') renderDashboard();
   window.scrollTo(0,0);
 }
 
@@ -407,6 +559,7 @@ function dueCard(p, cls){
     '<div class="pt-top"><div><div class="pt-name">'+esc(p.name)+'</div><div class="pt-mob">📱 '+esc(p.mobile)+'</div></div>'+dueChip(dl)+'</div>'+
     '<div class="pt-meds">'+medStr+'</div>'+
     '<div class="pt-actions">'+
+      '<button class="btn btn-photo'+(photoIds.has(p.id)?' has':'')+'" onclick="photoBtnClick(\''+p.id+'\')">'+(photoIds.has(p.id)?'📸':'📷')+'</button>'+
       '<button class="btn btn-wa" onclick="sendWA(\''+p.id+'\')">💬 WhatsApp</button>'+
       '<button class="btn btn-refill" onclick="refill(\''+p.id+'\')">✓ Refill Diya</button>'+
     '</div></div>';
@@ -454,6 +607,7 @@ function renderPatients(){
       '<div class="pt-top"><div><div class="pt-name">'+esc(p.name)+'</div><div class="pt-mob">📱 '+esc(p.mobile)+'</div></div>'+dueChip(dl)+'</div>'+
       '<div class="pt-meds">'+meds+'</div>'+
       '<div class="pt-actions">'+
+        '<button class="btn btn-photo'+(photoIds.has(p.id)?' has':'')+'" onclick="photoBtnClick(\''+p.id+'\')">'+(photoIds.has(p.id)?'📸':'📷')+'</button>'+
         '<button class="btn btn-ghost" onclick="openEdit(\''+p.id+'\')">✏️ Edit</button>'+
         '<button class="btn btn-ghost" onclick="showHist(\''+p.id+'\')">📜 History</button>'+
         '<button class="btn btn-refill" onclick="refill(\''+p.id+'\')">✓ Refill</button>'+
@@ -568,6 +722,7 @@ function deletePatient(){
   const p = patients.find(x=>x.id===editingId);
   if(!confirm(p.name+' ka poora record delete karein? Ye wapas nahi aayega.')) return;
   patients = patients.filter(x=>x.id!==editingId);
+  deletePhotoBlob(editingId).then(()=>photoIds.delete(editingId));
   save(); toast('🗑️ Delete ho gaya'); showScreen('patients');
 }
 
@@ -583,6 +738,68 @@ function saveSettings(){
   settings.lead = Number(document.getElementById('setLead').value)||3;
   save(); load(); closeSettings(); renderDue();
   toast('✓ Settings save ho gayi');
+}
+
+// ---------- Dashboard ----------
+function renderDashboard(){
+  const el = document.getElementById('reportContent');
+  if(!patients.length){
+    el.innerHTML = '<div class="empty"><div class="big">📊</div><p><b>Abhi data nahi hai</b><br>Patients jodo aur refill karo, report yahan dikhegi.</p></div>';
+    return;
+  }
+  const now = new Date();
+  const curMonth = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  let monthRevenue=0, monthRefills=0, lifetimeRevenue=0, lifetimeRefills=0;
+  const medCount = {};
+  patients.forEach(p=>{
+    (p.history||[]).forEach(h=>{
+      lifetimeRevenue += (h.total||0);
+      lifetimeRefills++;
+      if(String(h.date||'').slice(0,7) === curMonth){ monthRevenue += (h.total||0); monthRefills++; }
+      (h.items||[]).forEach(it=>{ const k=String(it).trim(); if(k) medCount[k]=(medCount[k]||0)+1; });
+    });
+  });
+  let overdue=0, today=0, soon=0;
+  patients.forEach(p=>{
+    const dl = patientDue(p);
+    if(dl<0) overdue++; else if(dl===0) today++; else if(dl<=settings.lead) soon++;
+  });
+  const topMeds = Object.entries(medCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxCount = topMeds.length ? topMeds[0][1] : 1;
+
+  let html = '';
+  html += '<div class="sec-label green">📅 Is Mahine</div>';
+  html += '<div class="stat-grid">'+
+    '<div class="stat-card"><div class="num">₹'+monthRevenue+'</div><div class="lbl">Estimated Sale</div></div>'+
+    '<div class="stat-card"><div class="num">'+monthRefills+'</div><div class="lbl">Refills</div></div>'+
+  '</div>';
+
+  html += '<div class="sec-label blue">📈 Overall</div>';
+  html += '<div class="stat-grid">'+
+    '<div class="stat-card"><div class="num">'+patients.length+'</div><div class="lbl">Total Patients</div></div>'+
+    '<div class="stat-card"><div class="num">₹'+lifetimeRevenue+'</div><div class="lbl">Lifetime Sale</div></div>'+
+  '</div>';
+
+  html += '<div class="sec-label amber">⏰ Abhi Ka Status</div>';
+  html += '<div class="stat-grid cols3">'+
+    '<div class="stat-card red"><div class="num">'+overdue+'</div><div class="lbl">Late</div></div>'+
+    '<div class="stat-card amber"><div class="num">'+today+'</div><div class="lbl">Aaj Due</div></div>'+
+    '<div class="stat-card"><div class="num">'+soon+'</div><div class="lbl">Aane Waale</div></div>'+
+  '</div>';
+
+  html += '<div class="sec-label green">💊 Top Dawaiyaan</div>';
+  html += '<div class="card">';
+  if(topMeds.length){
+    html += topMeds.map(([name,count])=>
+      '<div class="bar-item"><div class="bar-top"><span>'+esc(name)+'</span><span class="bc">'+count+'x</span></div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+Math.round(count/maxCount*100)+'%"></div></div></div>'
+    ).join('');
+  } else {
+    html += '<p class="mini-note">Abhi koi refill record nahi hai.</p>';
+  }
+  html += '</div>';
+
+  el.innerHTML = html;
 }
 
 // ---------- Backup ----------
@@ -617,6 +834,7 @@ load();
 if(isActivated()){
   document.getElementById('lockScreen').style.display = 'none';
   renderDue();
+  loadPhotoIndex().then(function(){ renderDue(); renderPatients(); });
 } else {
   setupLock();
 }
