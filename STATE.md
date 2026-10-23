@@ -10,7 +10,7 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - `icons/` — `logo.svg` (master), `maskable.svg`, `icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon.png`, `favicon-48.png`
 
 ## Version history
-- **v1.6.0 (2026-10-23)** — Header mein **🔄 Refresh** button (⚙️ ke paas): online ho to purana cache hata ke service worker update karke reload, offline ho to bas reload (saved version khulta hai). Data (patients, rates, Gemini key, mode) safe rehta hai. sw cache v1.6.0.
+- **v1.6.0 (2026-10-23)** — Header mein **🔄 Refresh** button (⚙️ ke paas): online ho to purana cache hata ke service worker update karke reload, offline ho to bas reload (saved version khulta hai). Data (patients, rates, Gemini key, mode) safe rehta hai. sw cache v1.6.0. **Gemini auto model switch:** model na mile (404), free limit khatam (429) ya busy (500/503) ho to apne aap agla model (3.8-flash → flash-latest → 3.5-flash-lite); jawab samajh na aaye to bhi agla. Sab fail ho tabhi message (sab limit pe → 'Sabhi models ki free limit khatam', busy → '1 minute baad try karo'). Galat key pe turant message (dusre model try nahi). Check screen pe 'Model: …' dikhta hai. sw cache v1.6.1.
 - **v1.5.0 (2026-10-23)** — Header ke neeche do button (Bill Photo/Gallery jaise): **💊 Rate List** (pehla) aur **👥 Patient List** (doosra); chuna hua dark gunmetal. Rate List = sirf Rate page (neeche nav nahi). Patient List = purana set (Due List, Patients, Report, Naya). App pichhli baar wala mode yaad rakhta hai (`dk_mode`), pehli baar Rate List. sw cache v1.5.0.
 - **v1.4.0 (2026-10-23)** — **Mobile app icon + install**: Silver mirror + gold icon (gold medical cross pe khata lines, kone mein gunmetal badge pe capsule goli), Android gol icon ke liye alag maskable version. `manifest.json` (naam DawaKhata, standalone), `sw.js` (offline chalta hai, network-first; Gemini/WhatsApp ko nahi chhoota). Home screen pe 'Install / Add to Home screen' se app jaisa khulta hai. Demo mein bhi icon (par install manifest nahi).
 - **v1.3.0 (2026-10-23)** — **📷 Bill Scan (Gemini)**: Rate tab mein "Bill Photo" / "Gallery se" (kai page ek saath). Gemini bill padh ke party naam, bill no/date, har product ka naam, qty, free, rate, disc %, GST % nikalta hai. Final rate = Rate − Disc% + GST% (free qty on ho to ×qty/(qty+free); rate na mile to amount/qty). Check screen: party naam, har line ka naam/rate edit, tick hatao, tag Naya / Purana→Naya / Same. Product ab **party-wise** save (naam + party = ek entry; alag party = alag rate). Manual form mein Party field (purani parties ki list). Search party naam se bhi. Settings mein Gemini API key + model. **Fix:** v1.1.0 mein galti se hata Settings popup wapas laaya (⚙️ button ab chalta hai). **Bug fixes (full audit):** (1) Patient edit karne pe saari dawaiyon ki date pehli dawai ki date ban jaati thi — ab date na badlo to har dawai ki apni date rehti hai, badlo to sab pe lagti hai. (2) Lamba toast message screen se bahar nahi jaata. (3) Refill/History/Report totals 2 decimal pe round (float junk nahi). (4) Gemini key URL ki jagah header (x-goog-api-key) mein; 'thinking' parts ignore; model not-found pe agla model try. Full end-to-end test (30+ checks) dono files pe pass.
@@ -46,12 +46,11 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - License key hataya — app ab free / bina lock ke chalega.
 - Theme = ShopSathi wala Silver Mirror + Gold (bg #E9EBEE, gold #D9A833, gunmetal #2A2D31).
 - Rate list abhi patient ki dawai se linked nahi hai (alag list).
-- Bill scan ke liye Gemini (free key, aistudio.google.com/apikey). Default model gemini-3.8-flash; 404 pe gemini-flash-latest, phir gemini-3.5-flash-lite.
+- Bill scan ke liye Gemini (free key, aistudio.google.com/apikey). Default model gemini-3.8-flash; 404/429/5xx pe apne aap gemini-flash-latest, phir gemini-3.5-flash-lite (Settings ka Model box khali = default).
 - Ek product alag-alag party se → alag entry, taaki rate compare ho sake.
 - Bill ka cash discount (poore bill pe) rate mein nahi ghataya jaata — sirf item ka disc %.
 
 ## Pending / ideas
-- Gemini: free limit (429) / busy (503) pe bhi apne aap agla model try karna — Ankush se confirm baaki
 - Bill scan asli bills pe test karna (Gemini key ke saath)
 - Rate list se patient form mein dawai ka naam auto-suggest
 - Sale rate / MRP / margin column (abhi sirf purchase rate)
