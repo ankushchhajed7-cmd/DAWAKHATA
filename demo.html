@@ -189,7 +189,7 @@ mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
 #toast{
   position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
   background:var(--ink); color:#fff; padding:10px 18px; border-radius:24px; font-size:13.5px;
-  font-weight:700; opacity:0; transition:opacity .3s; z-index:100; pointer-events:none; white-space:nowrap;
+  font-weight:700; opacity:0; transition:opacity .3s; z-index:100; pointer-events:none; white-space:normal; max-width:92vw; width:max-content; text-align:center; line-height:1.35;
 }
 #toast.show{opacity:1;}
 /* Modal */
@@ -543,6 +543,7 @@ let products = [];
 let editingRateId = null;
 let settings = { shop:'', lead:3 };
 let editingId = null;
+let editOrigDate = '';
 
 function load(){
   try{ patients = JSON.parse(localStorage.getItem('dk_demo_patients')) || []; }catch(e){ patients = []; }
@@ -571,6 +572,7 @@ function fmtDate(s){
   const d = new Date(s);
   return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
 }
+function money(n){ return Math.round((Number(n)||0)*100)/100; }
 function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function toast(msg){
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
@@ -682,7 +684,7 @@ function refill(id){
   const dueMeds = p.medicines.filter(m=>daysLeft(m) <= settings.lead);
   const target = dueMeds.length ? dueMeds : p.medicines;
   const names = target.map(m=>m.name).join(', ');
-  const total = target.reduce((s,m)=>s+(Number(m.price)||0),0);
+  const total = money(target.reduce((s,m)=>s+(Number(m.price)||0),0));
   if(!confirm(p.name+' ko refill diya?\n\nDawai: '+names+'\nTotal: ₹'+total)) return;
   const t = todayStr();
   target.forEach(m=>m.last=t);
@@ -697,7 +699,7 @@ function refill(id){
 function showHist(id){
   const p = patients.find(x=>x.id===id); if(!p) return;
   const h = p.history || [];
-  const totalSpent = h.reduce((s,e)=>s+(e.total||0),0);
+  const totalSpent = money(h.reduce((s,e)=>s+(e.total||0),0));
   let html = '<h3>📜 '+esc(p.name)+' — History</h3>';
   html += '<p class="mini-note">Total kharidari: <b>₹'+totalSpent+'</b> ('+h.length+' baar)</p><hr class="soft">';
   html += h.length
@@ -735,7 +737,8 @@ function openEdit(id){
   document.getElementById('formTitle').textContent = '✏️ Edit: '+p.name;
   document.getElementById('fName').value = p.name;
   document.getElementById('fMobile').value = p.mobile;
-  document.getElementById('fDate').value = p.medicines[0] ? p.medicines[0].last : todayStr();
+  editOrigDate = p.medicines[0] && p.medicines[0].last ? p.medicines[0].last : todayStr();
+  document.getElementById('fDate').value = editOrigDate;
   document.getElementById('medRows').innerHTML = '';
   p.medicines.forEach(m=>addMedRow(m));
   document.getElementById('deleteBtn').style.display = 'block';
@@ -759,11 +762,12 @@ function savePatient(){
     const p = patients.find(x=>x.id===editingId);
     const oldLast = {};
     p.medicines.forEach(m=>oldLast[m.name.toLowerCase()]=m.last);
-    meds.forEach(m=>{ if(oldLast[m.name.toLowerCase()] && document.getElementById('fDate').value === '') m.last = oldLast[m.name.toLowerCase()]; });
+    const dateChanged = document.getElementById('fDate').value !== editOrigDate;
+    meds.forEach(m=>{ const k = m.name.toLowerCase(); if(!dateChanged && oldLast[k]) m.last = oldLast[k]; });
     p.name=name; p.mobile=mobile; p.medicines=meds;
     toast('✓ Update ho gaya');
   } else {
-    patients.push({id:'p'+Date.now(), name:name, mobile:mobile, medicines:meds, history:[{date:date, items:meds.map(m=>m.name), total:meds.reduce((s,m)=>s+m.price,0)}]});
+    patients.push({id:'p'+Date.now(), name:name, mobile:mobile, medicines:meds, history:[{date:date, items:meds.map(m=>m.name), total:money(meds.reduce((s,m)=>s+m.price,0))}]});
     toast('✓ '+name+' add ho gaye');
   }
   save(); showScreen('due');
@@ -903,9 +907,9 @@ var SCAN_PROMPT = 'This is a photo of an Indian purchase invoice (medical/pharma
   '"amount" = the line amount as printed. All numbers must be plain numbers without currency symbols or commas. ' +
   'Include every product line, skip totals, taxes summary and blank rows. If a value is not visible use 0 or "".';
 function gemCall(model, key, parts){
-  return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key), {
+  return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent', {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json', 'x-goog-api-key':key},
     body: JSON.stringify({contents:[{role:'user', parts:parts}], generationConfig:{temperature:0, responseMimeType:'application/json'}})
   }).then(function(r){
     return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, json:j}; });
@@ -913,7 +917,7 @@ function gemCall(model, key, parts){
 }
 function parseGemJSON(j){
   var txt = '';
-  try{ txt = j.candidates[0].content.parts.map(function(p){ return p.text||''; }).join(''); }catch(e){}
+  try{ txt = j.candidates[0].content.parts.filter(function(p){ return !p.thought; }).map(function(p){ return p.text||''; }).join(''); }catch(e){}
   txt = txt.replace(/^```(?:json)?/i,'').replace(/```\s*$/,'').trim();
   var a = txt.indexOf('{'), b = txt.lastIndexOf('}');
   if(a < 0 || b < 0) throw new Error('empty');
@@ -932,7 +936,8 @@ function onBillFiles(ev){
     var models = [cfg.model || GEM_DEFAULT].concat(GEM_FALLBACK.filter(function(m){ return m !== (cfg.model || GEM_DEFAULT); }));
     function tryModel(i){
       return gemCall(models[i], cfg.key, parts).then(function(res){
-        if(res.status === 404 && i+1 < models.length) return tryModel(i+1);
+        var em = (res.json && res.json.error && res.json.error.message) || '';
+        if(i+1 < models.length && (res.status === 404 || (res.status === 400 && /not found|not supported|unknown model|is not available/i.test(em)))) return tryModel(i+1);
         if(res.status !== 200){
           var m = (res.json && res.json.error && res.json.error.message) || ('HTTP '+res.status);
           throw new Error(m);
@@ -1080,6 +1085,7 @@ function renderDashboard(){
     const dl = patientDue(p);
     if(dl<0) overdue++; else if(dl===0) today++; else if(dl<=settings.lead) soon++;
   });
+  monthRevenue = money(monthRevenue); lifetimeRevenue = money(lifetimeRevenue);
   const topMeds = Object.entries(medCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxCount = topMeds.length ? topMeds[0][1] : 1;
 
