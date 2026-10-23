@@ -3,16 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0E6B4F">
+<meta name="theme-color" content="#C2C7CC">
 <title>DawaKhata — Medical Store Reminder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --green:#0E6B4F; --green-dark:#0A523C; --mint:#Eef7F2; --card:#FFFFFF;
-  --ink:#1B2B24; --muted:#5C6F66; --line:#DCE9E2;
+  /* Silver Mirror + Gold theme (ShopSathi style) */
+  --green:#2A2D31; --green-dark:#6E4F0E; --mint:#EEF0F2; --card:#FFFFFF;
+  --ink:#1F2226; --ink2:#33373C; --muted:#5A6068; --line:#E1E4E8; --line2:#D5D9DE;
+  --gold:#D9A833; --gold-l:#E8C25A; --gold-d:#8A6516; --gold-dd:#6E4F0E; --gun:#2A2D31;
   --red:#C62828; --red-bg:#FDECEC;
   --amber:#B45309; --amber-bg:#FFF4E0;
   --blue:#1D4ED8; --blue-bg:#E8EEFF;
   --wa:#25D366;
+  --mirror:linear-gradient(135deg,#8E9399 0%,#E3E6E9 25%,#FFFFFF 40%,#C2C7CC 52%,#A9AEB4 66%,#E6E9EC 82%,#FAFBFC 100%);
+  --goldmirror:linear-gradient(135deg,#8A6516 0%,#E8C25A 22%,#FFF4C2 38%,#D9A833 46%,#7E5A12 62%,#E6BF55 80%,#FFF0B0 100%);
   --radius:14px;
 }
 *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
@@ -146,6 +152,14 @@ nav .badge{
   position:absolute; margin-left:26px; margin-top:-2px; background:var(--red); color:#fff;
   font-size:10px; border-radius:20px; padding:1px 6px; font-weight:800;
 }
+/* Rate list */
+.rate-card{display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer;}
+.rate-card:active{background:var(--mint);}
+.rt-name{font-size:15.5px; font-weight:800;}
+.rt-date{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.rt-price{font-size:18px; font-weight:800; color:var(--green-dark); white-space:nowrap;}
+.rt-price small{display:block; font-size:10px; font-weight:800; color:var(--muted); text-align:right; text-transform:uppercase; letter-spacing:.4px;}
+mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
 /* Toast */
 #toast{
   position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
@@ -184,6 +198,43 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
 .btn-photo{flex:0 0 46px !important; padding:10px 0 !important; background:var(--mint); color:var(--green-dark); font-size:16px;}
 .btn-photo.has{background:#fff; border:1.5px solid var(--green); color:var(--green);}
 #photoImg{width:100%; border-radius:12px; margin-bottom:12px; display:block;}
+/* ===== Silver Mirror + Gold finish ===== */
+body{
+  font-family:'Baloo 2',-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+  background:#E9EBEE linear-gradient(160deg,#D3D7DB 0%,#EEF0F2 22%,#FFFFFF 40%,#DDE0E4 58%,#F3F4F6 78%,#D9DCE0 100%) fixed;
+}
+header{
+  background:var(--mirror); color:var(--ink);
+  border-bottom:3px solid var(--gold); border-radius:0 0 26px 26px;
+  padding:14px 18px 16px; box-shadow:0 6px 18px rgba(42,45,49,.18);
+}
+header h1{font-size:21px; font-weight:800; color:var(--gun); line-height:1.1;}
+header h1 span{color:var(--gold-dd);}
+header .sub{color:var(--ink2); opacity:1; font-size:12.5px; font-weight:600;}
+.cross{background:var(--mirror); border:2px solid var(--gold); border-radius:10px; width:34px; height:34px; box-shadow:0 2px 6px rgba(0,0,0,.18);}
+.cross::before,.cross::after{background:var(--goldmirror); box-shadow:0 0 0 .5px rgba(110,79,14,.6);}
+.cross::before{width:18px; height:6px; top:12px; left:6px;}
+.cross::after{width:6px; height:18px; top:6px; left:12px;}
+.icon-btn{background:#fff; border:1px solid #A7ADB3; color:var(--gun); width:44px; height:44px; border-radius:22px; padding:0; font-size:18px; display:flex; align-items:center; justify-content:center;}
+.card,.form-card,.stat-card{border-color:var(--line); box-shadow:0 1px 3px rgba(31,34,38,.06);}
+.sec-label.green{color:var(--gold-dd);} .sec-label.green .count{background:var(--gun); color:var(--gold-l);}
+.sec-label .count{background:var(--gun); color:var(--gold-l);}
+.btn-refill,.save-btn{background:var(--gun); color:var(--gold-l);}
+.btn-ghost,.btn-photo{background:#EEF0F2; color:var(--ink2);}
+.btn-photo.has{background:#fff; border:1.5px solid var(--gold); color:var(--gold-d);}
+.due-chip.ok{background:#EEF0F2; color:var(--ink2);}
+.add-med{background:#FFFBEF; color:var(--gold-dd); border:1.5px dashed var(--gold);}
+input:focus,select:focus,.search:focus{border-color:var(--gold); box-shadow:0 0 0 3px rgba(217,168,51,.22);}
+input,select,.search{border-color:#C9CDD2;}
+label{color:var(--ink2);}
+.bar-track{background:#E4E7EA;} .bar-fill{background:var(--goldmirror);}
+.rt-price{color:var(--gold-dd);}
+nav{border-top:2px solid var(--gold); box-shadow:0 -4px 14px rgba(31,34,38,.08);}
+nav button.active{color:var(--gold-d);}
+nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
+.modal{border-top:3px solid var(--gold);}
+.demo-bar{background:var(--gun) !important; color:var(--gold-l) !important;}
+.demo-bar a{color:var(--gold-l) !important;}
 </style>
 </head>
 <body>
@@ -192,7 +243,7 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
   <div class="brand">
     <div class="cross"></div>
     <div>
-      <h1>DawaKhata</h1>
+      <h1><span>Dawa</span>Khata</h1>
       <div class="sub" id="shopSub">Medical Store Reminder</div>
     </div>
   </div>
@@ -208,6 +259,13 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
 <div class="screen" id="scr-patients">
   <input class="search" id="searchBox" placeholder="🔍 Naam ya mobile se dhundo..." oninput="renderPatients()">
   <div id="patientList"></div>
+</div>
+
+<!-- RATE LIST SCREEN -->
+<div class="screen" id="scr-rates">
+  <input class="search" id="rateSearch" placeholder="🔍 Product ka naam dhundo..." oninput="renderRates()" autocomplete="off">
+  <button class="add-med" style="margin:8px 0 6px;" onclick="openRateForm()">+ Naya product jodo</button>
+  <div id="rateList"></div>
 </div>
 
 <!-- ADD/EDIT SCREEN -->
@@ -237,11 +295,25 @@ hr.soft{border:none; border-top:1px solid var(--line); margin:16px 0;}
 <nav>
   <button id="nav-due" class="active" onclick="showScreen('due')"><span class="nv-ic">⏰</span>Due List<span class="badge" id="dueBadge" style="display:none;"></span></button>
   <button id="nav-patients" onclick="showScreen('patients')"><span class="nv-ic">👥</span>Patients</button>
+  <button id="nav-rates" onclick="showScreen('rates')"><span class="nv-ic">💊</span>Rate</button>
   <button id="nav-report" onclick="showScreen('report')"><span class="nv-ic">📊</span>Report</button>
   <button id="nav-add" onclick="openAddForm()"><span class="nv-ic">➕</span>Naya</button>
 </nav>
 
 <div id="toast"></div>
+
+<!-- RATE ADD/EDIT MODAL -->
+<div class="modal-bg" id="rateModal" onclick="if(event.target===this)closeRateForm()">
+  <div class="modal">
+    <h3 id="rateFormTitle">💊 Naya Product</h3>
+    <label>Product ka naam *</label>
+    <input id="rName" placeholder="Jaise: Telma 40" autocomplete="off">
+    <label>Purchase rate ₹ *</label>
+    <input id="rRate" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Jaise: 95.50" onkeydown="if(event.key==='Enter')saveRate()">
+    <button class="save-btn" onclick="saveRate()">💾 Save Karo</button>
+    <button class="btn btn-red" id="rateDelBtn" style="margin-top:10px; width:100%; display:none;" onclick="deleteRate()">🗑️ Product Delete Karo</button>
+  </div>
+</div>
 
 <!-- HISTORY MODAL -->
 <div class="modal-bg" id="histModal" onclick="if(event.target===this)closeHist()">
@@ -378,16 +450,20 @@ function removePhoto(){
 
 // ---------- Data ----------
 let patients = [];
+let products = [];
+let editingRateId = null;
 let settings = { shop:'', lead:3 };
 let editingId = null;
 
 function load(){
   try{ patients = JSON.parse(localStorage.getItem('dk_patients')) || []; }catch(e){ patients = []; }
+  try{ products = JSON.parse(localStorage.getItem('dk_products')) || []; }catch(e){ products = []; }
   try{ settings = Object.assign(settings, JSON.parse(localStorage.getItem('dk_settings'))||{}); }catch(e){}
   document.getElementById('shopSub').textContent = settings.shop || 'Medical Store Reminder';
 }
 function save(){
   localStorage.setItem('dk_patients', JSON.stringify(patients));
+  localStorage.setItem('dk_products', JSON.stringify(products));
   localStorage.setItem('dk_settings', JSON.stringify(settings));
 }
 
@@ -425,6 +501,7 @@ function showScreen(name){
   document.getElementById('nav-'+name).classList.add('active');
   if(name==='due') renderDue();
   if(name==='patients') renderPatients();
+  if(name==='rates') renderRates();
   if(name==='report') renderDashboard();
   window.scrollTo(0,0);
 }
@@ -611,6 +688,76 @@ function deletePatient(){
   save(); toast('🗑️ Delete ho gaya'); showScreen('patients');
 }
 
+// ---------- Rate List (Products) ----------
+function fmtRate(r){ var n = Number(r)||0; return '₹' + (n % 1 ? n.toFixed(2) : n); }
+function hl(name, q){
+  var s = esc(name);
+  if(!q) return s;
+  var i = name.toLowerCase().indexOf(q);
+  if(i < 0) return s;
+  return esc(name.slice(0,i)) + '<mark>' + esc(name.slice(i, i+q.length)) + '</mark>' + esc(name.slice(i+q.length));
+}
+function renderRates(){
+  const raw = (document.getElementById('rateSearch').value||'').trim();
+  const q = raw.toLowerCase();
+  const el = document.getElementById('rateList');
+  let list = products.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(q) list = list.filter(p=>p.name.toLowerCase().includes(q));
+  if(!list.length){
+    el.innerHTML = q
+      ? '<div class="empty"><div class="big">🔍</div><p>"<b>'+esc(raw)+'</b>" nahi mila.</p></div>'+
+        '<button class="save-btn" style="margin-top:0;" onclick="openRateForm(null, document.getElementById(\'rateSearch\').value.trim())">+ "'+esc(raw)+'" jodo</button>'
+      : '<div class="empty"><div class="big">💊</div><p><b>Abhi koi product nahi hai</b><br>Upar <b>+ Naya product jodo</b> dabao.</p></div>';
+    return;
+  }
+  el.innerHTML = '<div class="sec-label green">💊 Products <span class="count">'+(q ? list.length+' / '+products.length : products.length)+'</span></div>' +
+    list.map(p=>
+      '<div class="card rate-card" onclick="openRateForm(\''+p.id+'\')">'+
+        '<div><div class="rt-name">'+hl(p.name, q)+'</div><div class="rt-date">Update: '+fmtDate(p.updated)+'</div></div>'+
+        '<div class="rt-price"><small>Purchase</small>'+fmtRate(p.rate)+'</div>'+
+      '</div>'
+    ).join('');
+}
+function openRateForm(id, prefill){
+  editingRateId = id || null;
+  const p = id ? products.find(x=>x.id===id) : null;
+  document.getElementById('rateFormTitle').textContent = p ? '✏️ Rate Badlo' : '💊 Naya Product';
+  document.getElementById('rName').value = p ? p.name : (prefill || '');
+  document.getElementById('rRate').value = p ? p.rate : '';
+  document.getElementById('rateDelBtn').style.display = p ? 'block' : 'none';
+  document.getElementById('rateModal').classList.add('show');
+  setTimeout(function(){ document.getElementById(p || prefill ? 'rRate' : 'rName').focus(); }, 60);
+}
+function closeRateForm(){ document.getElementById('rateModal').classList.remove('show'); }
+function saveRate(){
+  const name = document.getElementById('rName').value.trim();
+  const rateStr = document.getElementById('rRate').value.trim();
+  const rate = Number(rateStr);
+  if(!name){ toast('⚠️ Product ka naam daalo'); return; }
+  if(rateStr === '' || isNaN(rate) || rate < 0){ toast('⚠️ Sahi purchase rate daalo'); return; }
+  const dup = products.find(x=>x.name.toLowerCase()===name.toLowerCase() && x.id!==editingRateId);
+  if(dup){
+    if(!confirm('"'+dup.name+'" pehle se list mein hai ('+fmtRate(dup.rate)+').\nUska rate '+fmtRate(rate)+' kar dein?')) return;
+    if(editingRateId) products = products.filter(x=>x.id!==editingRateId);
+    dup.rate = rate; dup.updated = todayStr();
+  } else if(editingRateId){
+    const p = products.find(x=>x.id===editingRateId);
+    p.name = name; p.rate = rate; p.updated = todayStr();
+  } else {
+    products.push({id:'r'+Date.now(), name:name, rate:rate, updated:todayStr()});
+  }
+  save(); closeRateForm(); renderRates();
+  toast('✓ '+name+' — '+fmtRate(rate)+' save ho gaya');
+}
+function deleteRate(){
+  if(!editingRateId) return;
+  const p = products.find(x=>x.id===editingRateId);
+  if(!confirm(p.name+' ko list se delete karein?')) return;
+  products = products.filter(x=>x.id!==editingRateId);
+  save(); closeRateForm(); renderRates();
+  toast('🗑️ Delete ho gaya');
+}
+
 // ---------- Settings ----------
 function openSettings(){
   document.getElementById('setShop').value = settings.shop;
@@ -689,7 +836,7 @@ function renderDashboard(){
 
 // ---------- Backup ----------
 function exportData(){
-  const blob = new Blob([JSON.stringify({patients:patients, settings:settings, exported:todayStr()}, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({patients:patients, products:products, settings:settings, exported:todayStr()}, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'dawakhata_backup_'+todayStr()+'.json';
@@ -703,10 +850,11 @@ function importData(ev){
     try{
       const data = JSON.parse(e.target.result);
       if(!Array.isArray(data.patients)) throw 'bad';
-      if(!confirm(data.patients.length+' patients import honge. Abhi ka data replace ho jayega. Pakka?')) return;
+      if(!confirm(data.patients.length+' patients'+(Array.isArray(data.products)?' aur '+data.products.length+' products':'')+' import honge. Abhi ka data replace ho jayega. Pakka?')) return;
       patients = data.patients;
       if(data.settings) settings = Object.assign(settings, data.settings);
-      save(); load(); closeSettings(); renderDue(); renderPatients();
+      if(Array.isArray(data.products)) products = data.products;
+      save(); load(); closeSettings(); renderDue(); renderPatients(); renderRates();
       toast('✓ '+patients.length+' patients import ho gaye');
     }catch(err){ toast('⚠️ File sahi nahi hai'); }
   };
