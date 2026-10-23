@@ -160,6 +160,31 @@ nav .badge{
 .rt-price{font-size:18px; font-weight:800; color:var(--green-dark); white-space:nowrap;}
 .rt-price small{display:block; font-size:10px; font-weight:800; color:var(--muted); text-align:right; text-transform:uppercase; letter-spacing:.4px;}
 mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
+/* Bill scan */
+.scan-row{display:flex; gap:8px; margin:10px 0 6px;}
+.scan-btn{flex:1; background:var(--gun); color:var(--gold-l); border:none; border-radius:12px; padding:13px 8px; font-size:14.5px; font-weight:800; cursor:pointer; font-family:inherit;}
+.scan-btn.alt{background:#fff; color:var(--gun); border:1.5px solid var(--gold);}
+.rt-party{font-size:12.5px; color:var(--gold-dd); font-weight:700; margin-top:2px;}
+#busy{position:fixed; inset:0; background:rgba(31,34,38,.55); z-index:150; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; color:#fff; font-weight:800; font-size:15px; text-align:center; padding:20px;}
+#busy.show{display:flex;}
+.spin{width:46px; height:46px; border-radius:50%; border:5px solid rgba(255,255,255,.25); border-top-color:var(--gold); animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.scan-meta{font-size:12.5px; color:var(--muted); margin:4px 0 8px;}
+.scan-item{border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:8px; background:#fff;}
+.scan-item.off{opacity:.45;}
+.scan-top{display:flex; gap:8px; align-items:center;}
+.scan-top input[type=checkbox]{width:22px; height:22px; flex:0 0 22px; accent-color:var(--gun);}
+.scan-top .sn{flex:1; padding:9px 10px; font-size:14px;}
+.scan-top .sr{flex:0 0 92px; padding:9px 8px; font-size:15px; font-weight:800; text-align:right;}
+.scan-info{display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--muted); margin-top:6px; padding-left:30px;}
+.tag{font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:20px; white-space:nowrap;}
+.tag.new{background:#E3F1E7; color:#1E6B3A;}
+.tag.up{background:#FBF0D6; color:#7A5A10;}
+.tag.same{background:#EEF0F2; color:var(--ink2);}
+.chk-line{display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:var(--ink2); margin:10px 0 6px;}
+.chk-line input{width:20px; height:20px; accent-color:var(--gun);}
+.keyrow{display:flex; gap:6px;} .keyrow input{flex:1;}
+.keyrow button{flex:0 0 46px; border:1.5px solid #C9CDD2; background:#fff; border-radius:10px; font-size:16px; cursor:pointer;}
 /* Toast */
 #toast{
   position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
@@ -264,10 +289,17 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
 
 <!-- RATE LIST SCREEN -->
 <div class="screen" id="scr-rates">
-  <input class="search" id="rateSearch" placeholder="🔍 Product ka naam dhundo..." oninput="renderRates()" autocomplete="off">
-  <button class="add-med" style="margin:8px 0 6px;" onclick="openRateForm()">+ Naya product jodo</button>
+  <input class="search" id="rateSearch" placeholder="🔍 Product ya party ka naam dhundo..." oninput="renderRates()" autocomplete="off">
+  <div class="scan-row">
+    <button class="scan-btn" onclick="startScan('cam')">📷 Bill Photo</button>
+    <button class="scan-btn alt" onclick="startScan('gal')">🖼️ Gallery se</button>
+  </div>
+  <button class="add-med" style="margin:2px 0 6px;" onclick="openRateForm()">+ Naya product jodo</button>
   <div id="rateList"></div>
 </div>
+<input type="file" id="billCam" accept="image/*" capture="environment" style="display:none;" onchange="onBillFiles(event)">
+<input type="file" id="billGal" accept="image/*" multiple style="display:none;" onchange="onBillFiles(event)">
+<div id="busy"><div class="spin"></div><div id="busyMsg">Bill padh raha hoon...</div></div>
 
 <!-- ADD/EDIT SCREEN -->
 <div class="screen" id="scr-add">
@@ -309,10 +341,63 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
     <h3 id="rateFormTitle">💊 Naya Product</h3>
     <label>Product ka naam *</label>
     <input id="rName" placeholder="Jaise: Telma 40" autocomplete="off">
-    <label>Purchase rate ₹ *</label>
+    <label>Party / Supplier ka naam</label>
+    <input id="rParty" placeholder="Jaise: Shree Medical Agency" list="partyList" autocomplete="off">
+    <datalist id="partyList"></datalist>
+    <label>Final purchase rate ₹ *</label>
     <input id="rRate" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Jaise: 95.50" onkeydown="if(event.key==='Enter')saveRate()">
     <button class="save-btn" onclick="saveRate()">💾 Save Karo</button>
     <button class="btn btn-red" id="rateDelBtn" style="margin-top:10px; width:100%; display:none;" onclick="deleteRate()">🗑️ Product Delete Karo</button>
+  </div>
+</div>
+
+<!-- BILL SCAN REVIEW MODAL -->
+<div class="modal-bg" id="scanModal">
+  <div class="modal" style="max-height:92vh;">
+    <h3>🧾 Bill se nikle products</h3>
+    <label>Party / Supplier ka naam *</label>
+    <input id="scParty" placeholder="Bill bhejne wali party" list="partyList" autocomplete="off" oninput="refreshScanTags()">
+    <div class="scan-meta" id="scMeta"></div>
+    <label class="chk-line"><input type="checkbox" id="scFree" checked onchange="recalcScan()"> Free qty ko rate mein ghatao (jaise 10+1)</label>
+    <div id="scList"></div>
+    <button class="save-btn" onclick="saveScan()">💾 Tick wale products Save Karo</button>
+    <button class="btn btn-ghost" style="margin-top:10px; width:100%;" onclick="closeScan()">✕ Cancel</button>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg" id="settingsModal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h3>⚙️ Settings & Backup</h3>
+    <div class="settings-row">
+      <label>Shop ka naam (WhatsApp message mein jayega)</label>
+      <input id="setShop" placeholder="Jaise: Shri Medical Store">
+    </div>
+    <div class="settings-row">
+      <label>Kitne din pehle reminder due dikhaye</label>
+      <select id="setLead">
+        <option value="2">2 din pehle</option>
+        <option value="3" selected>3 din pehle</option>
+        <option value="5">5 din pehle</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <label>Gemini API Key (Bill Scan ke liye)</label>
+      <div class="keyrow"><input id="setGemKey" type="password" placeholder="AIza..." autocomplete="off"><button type="button" onclick="var k=document.getElementById('setGemKey');k.type=k.type==='password'?'text':'password';">👁️</button></div>
+      <p class="mini-note">Free key yahan se lo: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> → "Create API key" → copy karke yahan paste karo. Key sirf is phone mein rehti hai, backup file mein nahi jaati.</p>
+    </div>
+    <div class="settings-row">
+      <label>Gemini Model</label>
+      <input id="setGemModel" placeholder="gemini-3.8-flash" autocomplete="off">
+    </div>
+    <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+    <hr class="soft">
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="exportData()">⬇️ Backup Export</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('importFile').click()">⬆️ Backup Import</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
+    <p class="mini-note">Backup file phone mein save hogi. Hafte mein ek baar export zaroor karein — phone data clear hone pe yahi file se sab wapas aa jayega.</p>
   </div>
 </div>
 
@@ -701,23 +786,35 @@ function hl(name, q){
   if(i < 0) return s;
   return esc(name.slice(0,i)) + '<mark>' + esc(name.slice(i, i+q.length)) + '</mark>' + esc(name.slice(i+q.length));
 }
+function normKey(s){ return String(s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function findProduct(name, party, exceptId){
+  var n = normKey(name), pt = normKey(party);
+  return products.find(x=>normKey(x.name)===n && normKey(x.party)===pt && x.id!==exceptId);
+}
+function fillPartyList(){
+  var set = {};
+  products.forEach(p=>{ if(p.party) set[p.party] = 1; });
+  document.getElementById('partyList').innerHTML = Object.keys(set).sort().map(p=>'<option value="'+esc(p)+'">').join('');
+}
 function renderRates(){
   const raw = (document.getElementById('rateSearch').value||'').trim();
   const q = raw.toLowerCase();
   const el = document.getElementById('rateList');
-  let list = products.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  if(q) list = list.filter(p=>p.name.toLowerCase().includes(q));
+  let list = products.slice().sort((a,b)=>a.name.localeCompare(b.name) || String(a.party||'').localeCompare(String(b.party||'')));
+  if(q) list = list.filter(p=>p.name.toLowerCase().includes(q) || String(p.party||'').toLowerCase().includes(q));
   if(!list.length){
     el.innerHTML = q
       ? '<div class="empty"><div class="big">🔍</div><p>"<b>'+esc(raw)+'</b>" nahi mila.</p></div>'+
         '<button class="save-btn" style="margin-top:0;" onclick="openRateForm(null, document.getElementById(\'rateSearch\').value.trim())">+ "'+esc(raw)+'" jodo</button>'
-      : '<div class="empty"><div class="big">💊</div><p><b>Abhi koi product nahi hai</b><br>Upar <b>+ Naya product jodo</b> dabao.</p></div>';
+      : '<div class="empty"><div class="big">💊</div><p><b>Abhi koi product nahi hai</b><br><b>📷 Bill Photo</b> se bill scan karo ya <b>+ Naya product jodo</b>.</p></div>';
     return;
   }
   el.innerHTML = '<div class="sec-label green">💊 Products <span class="count">'+(q ? list.length+' / '+products.length : products.length)+'</span></div>' +
     list.map(p=>
       '<div class="card rate-card" onclick="openRateForm(\''+p.id+'\')">'+
-        '<div><div class="rt-name">'+hl(p.name, q)+'</div><div class="rt-date">Update: '+fmtDate(p.updated)+'</div></div>'+
+        '<div><div class="rt-name">'+hl(p.name, q)+'</div>'+
+        (p.party ? '<div class="rt-party">🏪 '+hl(p.party, q)+'</div>' : '')+
+        '<div class="rt-date">Update: '+fmtDate(p.updated)+'</div></div>'+
         '<div class="rt-price"><small>Purchase</small>'+fmtRate(p.rate)+'</div>'+
       '</div>'
     ).join('');
@@ -725,8 +822,10 @@ function renderRates(){
 function openRateForm(id, prefill){
   editingRateId = id || null;
   const p = id ? products.find(x=>x.id===id) : null;
+  fillPartyList();
   document.getElementById('rateFormTitle').textContent = p ? '✏️ Rate Badlo' : '💊 Naya Product';
   document.getElementById('rName').value = p ? p.name : (prefill || '');
+  document.getElementById('rParty').value = p ? (p.party||'') : '';
   document.getElementById('rRate').value = p ? p.rate : '';
   document.getElementById('rateDelBtn').style.display = p ? 'block' : 'none';
   document.getElementById('rateModal').classList.add('show');
@@ -735,20 +834,21 @@ function openRateForm(id, prefill){
 function closeRateForm(){ document.getElementById('rateModal').classList.remove('show'); }
 function saveRate(){
   const name = document.getElementById('rName').value.trim();
+  const party = document.getElementById('rParty').value.trim();
   const rateStr = document.getElementById('rRate').value.trim();
   const rate = Number(rateStr);
   if(!name){ toast('⚠️ Product ka naam daalo'); return; }
   if(rateStr === '' || isNaN(rate) || rate < 0){ toast('⚠️ Sahi purchase rate daalo'); return; }
-  const dup = products.find(x=>x.name.toLowerCase()===name.toLowerCase() && x.id!==editingRateId);
+  const dup = findProduct(name, party, editingRateId);
   if(dup){
-    if(!confirm('"'+dup.name+'" pehle se list mein hai ('+fmtRate(dup.rate)+').\nUska rate '+fmtRate(rate)+' kar dein?')) return;
+    if(!confirm('"'+dup.name+'"'+(dup.party?' ('+dup.party+')':'')+' pehle se list mein hai ('+fmtRate(dup.rate)+').\nUska rate '+fmtRate(rate)+' kar dein?')) return;
     if(editingRateId) products = products.filter(x=>x.id!==editingRateId);
     dup.rate = rate; dup.updated = todayStr();
   } else if(editingRateId){
     const p = products.find(x=>x.id===editingRateId);
-    p.name = name; p.rate = rate; p.updated = todayStr();
+    p.name = name; p.party = party; p.rate = rate; p.updated = todayStr();
   } else {
-    products.push({id:'r'+Date.now(), name:name, rate:rate, updated:todayStr()});
+    products.push({id:'r'+Date.now(), name:name, party:party, rate:rate, updated:todayStr()});
   }
   save(); closeRateForm(); renderRates();
   toast('✓ '+name+' — '+fmtRate(rate)+' save ho gaya');
@@ -762,16 +862,196 @@ function deleteRate(){
   toast('🗑️ Delete ho gaya');
 }
 
+// ---------- Bill Scan (Gemini) ----------
+var GEM_DEFAULT = 'gemini-3.8-flash';
+var GEM_FALLBACK = ['gemini-flash-latest', 'gemini-3.5-flash-lite'];
+var scanItems = [];
+function gemCfg(){
+  var c = {key:'', model:''};
+  try{ c = Object.assign(c, JSON.parse(localStorage.getItem('dk_gem'))||{}); }catch(e){}
+  return c;
+}
+function busy(on, msg){
+  document.getElementById('busyMsg').textContent = msg || 'Bill padh raha hoon...';
+  document.getElementById('busy').classList.toggle('show', !!on);
+}
+function startScan(kind){
+  if(!gemCfg().key){
+    toast('⚠️ Pehle Settings mein Gemini API key daalo');
+    openSettings();
+    setTimeout(function(){ document.getElementById('setGemKey').focus(); }, 200);
+    return;
+  }
+  document.getElementById(kind === 'cam' ? 'billCam' : 'billGal').click();
+}
+function blobToB64(blob){
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(){ resolve(String(r.result).split(',')[1]); };
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+var SCAN_PROMPT = 'This is a photo of an Indian purchase invoice (medical/pharma or wholesale) printed in English. ' +
+  'Read the item table and return ONLY JSON, no markdown, in this exact shape: ' +
+  '{"party":"","bill_no":"","bill_date":"","items":[{"name":"","pack":"","qty":0,"free":0,"rate":0,"disc_pct":0,"gst_pct":0,"amount":0}]}. ' +
+  'Rules: "party" = the SELLER / supplier / distributor name printed at the top (not the buyer or the medical store it is billed to). ' +
+  '"name" = product name exactly as printed with strength (e.g. "TELMA 40 TAB"). "pack" = pack size like "10\'S" or "1x15" if shown. ' +
+  '"qty" = billed quantity (number). "free" = free quantity (number, 0 if none); if the scheme is written like "10+1", qty=10 and free=1. ' +
+  '"rate" = purchase rate per unit BEFORE discount and BEFORE GST (the Rate / PTR column, NOT MRP). ' +
+  '"disc_pct" = item discount percent (0 if none). "gst_pct" = total GST percent for that item (CGST+SGST, or IGST). ' +
+  '"amount" = the line amount as printed. All numbers must be plain numbers without currency symbols or commas. ' +
+  'Include every product line, skip totals, taxes summary and blank rows. If a value is not visible use 0 or "".';
+function gemCall(model, key, parts){
+  return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key), {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({contents:[{role:'user', parts:parts}], generationConfig:{temperature:0, responseMimeType:'application/json'}})
+  }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, json:j}; });
+  });
+}
+function parseGemJSON(j){
+  var txt = '';
+  try{ txt = j.candidates[0].content.parts.map(function(p){ return p.text||''; }).join(''); }catch(e){}
+  txt = txt.replace(/^```(?:json)?/i,'').replace(/```\s*$/,'').trim();
+  var a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+  if(a < 0 || b < 0) throw new Error('empty');
+  return JSON.parse(txt.slice(a, b+1));
+}
+function onBillFiles(ev){
+  var files = Array.prototype.slice.call(ev.target.files || []);
+  ev.target.value = '';
+  if(!files.length) return;
+  var cfg = gemCfg();
+  busy(true, files.length > 1 ? files.length+' photo padh raha hoon...' : 'Bill padh raha hoon...');
+  Promise.all(files.map(function(f){ return compressImage(f, 1800, 0.85).then(blobToB64); }))
+  .then(function(b64s){
+    var parts = [{text: SCAN_PROMPT + (b64s.length > 1 ? ' The '+b64s.length+' images are pages of the same invoice; merge all items.' : '')}];
+    b64s.forEach(function(d){ parts.push({inline_data:{mime_type:'image/jpeg', data:d}}); });
+    var models = [cfg.model || GEM_DEFAULT].concat(GEM_FALLBACK.filter(function(m){ return m !== (cfg.model || GEM_DEFAULT); }));
+    function tryModel(i){
+      return gemCall(models[i], cfg.key, parts).then(function(res){
+        if(res.status === 404 && i+1 < models.length) return tryModel(i+1);
+        if(res.status !== 200){
+          var m = (res.json && res.json.error && res.json.error.message) || ('HTTP '+res.status);
+          throw new Error(m);
+        }
+        return parseGemJSON(res.json);
+      });
+    }
+    return tryModel(0);
+  })
+  .then(function(data){
+    busy(false);
+    openScan(data || {});
+  })
+  .catch(function(err){
+    busy(false);
+    var m = String(err && err.message || err);
+    if(/API key|API_KEY|permission|403|401/i.test(m)) toast('⚠️ Gemini key galat hai — Settings check karo');
+    else if(/quota|429|RESOURCE_EXHAUSTED/i.test(m)) toast('⚠️ Gemini ki free limit khatam — thodi der baad try karo');
+    else if(/Failed to fetch|NetworkError/i.test(m)) toast('⚠️ Internet check karo');
+    else if(m === 'empty' || /JSON/i.test(m)) toast('⚠️ Bill theek se nahi padh paya — saaf photo lo');
+    else toast('⚠️ '+m.slice(0,60));
+  });
+}
+function num(v){ var n = parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? 0 : n; }
+function calcFinal(it, useFree){
+  var rate = num(it.rate), qty = num(it.qty), free = num(it.free), d = num(it.disc_pct), g = num(it.gst_pct), amt = num(it.amount);
+  var base = rate > 0 ? rate*(1-d/100) : (qty > 0 && amt > 0 ? amt/qty : 0);
+  var v = base*(1+g/100);
+  if(useFree && qty > 0 && free > 0) v = v*qty/(qty+free);
+  return Math.round(v*100)/100;
+}
+function breakdown(it, useFree){
+  var s = [];
+  if(num(it.rate)) s.push('Rate ₹'+num(it.rate));
+  if(num(it.disc_pct)) s.push('−'+num(it.disc_pct)+'%');
+  if(num(it.gst_pct)) s.push('+'+num(it.gst_pct)+'% GST');
+  if(num(it.qty)) s.push('Qty '+num(it.qty)+(num(it.free)?'+'+num(it.free)+' free'+(useFree?'':' (nahi ghataya)'):''));
+  return s.join(' · ');
+}
+function openScan(data){
+  var items = Array.isArray(data.items) ? data.items : [];
+  items = items.filter(function(it){ return String(it.name||'').trim(); });
+  if(!items.length){ toast('⚠️ Bill mein koi product nahi mila — saaf photo lo'); return; }
+  scanItems = items.map(function(it){
+    var name = String(it.name).trim().replace(/\s+/g,' ');
+    if(it.pack && String(it.pack).trim() && name.toLowerCase().indexOf(String(it.pack).toLowerCase()) < 0) name += ' ' + String(it.pack).trim();
+    return {raw:it, name:name, on:true, rate:0, edited:false};
+  });
+  fillPartyList();
+  document.getElementById('scParty').value = String(data.party||'').trim();
+  var meta = [];
+  if(data.bill_no) meta.push('Bill No: '+esc(data.bill_no));
+  if(data.bill_date) meta.push('Date: '+esc(data.bill_date));
+  meta.push(scanItems.length+' products mile — naam/rate check karke Save karo');
+  document.getElementById('scMeta').innerHTML = meta.join(' · ');
+  recalcScan();
+  document.getElementById('scanModal').classList.add('show');
+}
+function recalcScan(){
+  var useFree = document.getElementById('scFree').checked;
+  scanItems.forEach(function(s){ if(!s.edited) s.rate = calcFinal(s.raw, useFree); });
+  renderScan();
+}
+function scanTag(s){
+  var ex = findProduct(s.name, document.getElementById('scParty').value.trim());
+  if(!ex) return '<span class="tag new">Naya</span>';
+  if(Math.abs((Number(ex.rate)||0) - (Number(s.rate)||0)) < 0.005) return '<span class="tag same">Same rate</span>';
+  return '<span class="tag up">Purana '+fmtRate(ex.rate)+' → '+fmtRate(s.rate)+'</span>';
+}
+function renderScan(){
+  var useFree = document.getElementById('scFree').checked;
+  document.getElementById('scList').innerHTML = scanItems.map(function(s, i){
+    return '<div class="scan-item'+(s.on?'':' off')+'" id="sci'+i+'">'+
+      '<div class="scan-top">'+
+        '<input type="checkbox" '+(s.on?'checked':'')+' onchange="scanItems['+i+'].on=this.checked; document.getElementById(\'sci'+i+'\').classList.toggle(\'off\', !this.checked);">'+
+        '<input class="sn" value="'+esc(s.name)+'" oninput="scanItems['+i+'].name=this.value; refreshScanTags();">'+
+        '<input class="sr" type="number" inputmode="decimal" step="0.01" value="'+s.rate+'" oninput="scanItems['+i+'].rate=Number(this.value)||0; scanItems['+i+'].edited=true; refreshScanTags();">'+
+      '</div>'+
+      '<div class="scan-info"><span>'+esc(breakdown(s.raw, useFree))+'</span><span id="sct'+i+'">'+scanTag(s)+'</span></div>'+
+    '</div>';
+  }).join('');
+}
+function refreshScanTags(){
+  scanItems.forEach(function(s, i){ var t = document.getElementById('sct'+i); if(t) t.innerHTML = scanTag(s); });
+}
+function closeScan(){ document.getElementById('scanModal').classList.remove('show'); scanItems = []; }
+function saveScan(){
+  var party = document.getElementById('scParty').value.trim();
+  if(!party){ toast('⚠️ Party ka naam daalo'); document.getElementById('scParty').focus(); return; }
+  var chosen = scanItems.filter(function(s){ return s.on && String(s.name).trim() && Number(s.rate) > 0; });
+  if(!chosen.length){ toast('⚠️ Koi product tick nahi hai'); return; }
+  var added = 0, updated = 0, t = todayStr();
+  chosen.forEach(function(s, i){
+    var name = String(s.name).trim().replace(/\s+/g,' ');
+    var rate = Math.round(Number(s.rate)*100)/100;
+    var ex = findProduct(name, party);
+    if(ex){ ex.rate = rate; ex.updated = t; updated++; }
+    else { products.push({id:'r'+Date.now()+'_'+i, name:name, party:party, rate:rate, updated:t}); added++; }
+  });
+  save(); closeScan();
+  document.getElementById('rateSearch').value = '';
+  renderRates();
+  toast('✓ '+added+' naye, '+updated+' update — '+party);
+}
+
 // ---------- Settings ----------
 function openSettings(){
   document.getElementById('setShop').value = settings.shop;
   document.getElementById('setLead').value = settings.lead;
+  var gc = gemCfg();
+  document.getElementById('setGemKey').value = gc.key || '';
+  document.getElementById('setGemModel').value = gc.model || '';
   document.getElementById('settingsModal').classList.add('show');
 }
 function closeSettings(){ document.getElementById('settingsModal').classList.remove('show'); }
 function saveSettings(){
   settings.shop = document.getElementById('setShop').value.trim();
   settings.lead = Number(document.getElementById('setLead').value)||3;
+  try{ localStorage.setItem('dk_gem', JSON.stringify({key:document.getElementById('setGemKey').value.trim(), model:document.getElementById('setGemModel').value.trim()})); }catch(e){}
   save(); load(); closeSettings(); renderDue();
   toast('✓ Settings save ho gayi');
 }
@@ -874,12 +1154,12 @@ function dAgo(ago){
 function seedDemo(){
   if(!products.length){
     products = [
-      {id:'r1', name:'Telma 40', rate:96, updated:dAgo(5)},
-      {id:'r2', name:'Ecosprin 75', rate:32.5, updated:dAgo(12)},
-      {id:'r3', name:'Glycomet 500', rate:64, updated:dAgo(3)},
-      {id:'r4', name:'Thyronorm 50mcg', rate:118, updated:dAgo(20)},
-      {id:'r5', name:'Shelcal 500', rate:88.75, updated:dAgo(9)},
-      {id:'r6', name:'Rosuvas 10', rate:142, updated:dAgo(1)}
+      {id:'r1', name:'Telma 40', party:'Shree Medical Agency', rate:96, updated:dAgo(5)},
+      {id:'r2', name:'Ecosprin 75', party:'Shree Medical Agency', rate:32.5, updated:dAgo(12)},
+      {id:'r3', name:'Glycomet 500', party:'Balaji Pharma', rate:64, updated:dAgo(3)},
+      {id:'r4', name:'Thyronorm 50mcg', party:'Balaji Pharma', rate:118, updated:dAgo(20)},
+      {id:'r5', name:'Shelcal 500', party:'Shree Medical Agency', rate:88.75, updated:dAgo(9)},
+      {id:'r6', name:'Rosuvas 10', party:'Om Distributors', rate:142, updated:dAgo(1)}
     ];
     save();
   }
