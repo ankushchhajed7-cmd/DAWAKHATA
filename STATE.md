@@ -10,6 +10,7 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - `icons/` — `logo.svg` (master), `maskable.svg`, `icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon.png`, `favicon-48.png`
 
 ## Version history
+- **v1.5.0 (2026-10-23)** — Header ke neeche do button (Bill Photo/Gallery jaise): **💊 Rate List** (pehla) aur **👥 Patient List** (doosra); chuna hua dark gunmetal. Rate List = sirf Rate page (neeche nav nahi). Patient List = purana set (Due List, Patients, Report, Naya). App pichhli baar wala mode yaad rakhta hai (`dk_mode`), pehli baar Rate List. sw cache v1.5.0.
 - **v1.4.0 (2026-10-23)** — **Mobile app icon + install**: Silver mirror + gold icon (gold medical cross pe khata lines, kone mein gunmetal badge pe capsule goli), Android gol icon ke liye alag maskable version. `manifest.json` (naam DawaKhata, standalone), `sw.js` (offline chalta hai, network-first; Gemini/WhatsApp ko nahi chhoota). Home screen pe 'Install / Add to Home screen' se app jaisa khulta hai. Demo mein bhi icon (par install manifest nahi).
 - **v1.3.0 (2026-10-23)** — **📷 Bill Scan (Gemini)**: Rate tab mein "Bill Photo" / "Gallery se" (kai page ek saath). Gemini bill padh ke party naam, bill no/date, har product ka naam, qty, free, rate, disc %, GST % nikalta hai. Final rate = Rate − Disc% + GST% (free qty on ho to ×qty/(qty+free); rate na mile to amount/qty). Check screen: party naam, har line ka naam/rate edit, tick hatao, tag Naya / Purana→Naya / Same. Product ab **party-wise** save (naam + party = ek entry; alag party = alag rate). Manual form mein Party field (purani parties ki list). Search party naam se bhi. Settings mein Gemini API key + model. **Fix:** v1.1.0 mein galti se hata Settings popup wapas laaya (⚙️ button ab chalta hai). **Bug fixes (full audit):** (1) Patient edit karne pe saari dawaiyon ki date pehli dawai ki date ban jaati thi — ab date na badlo to har dawai ki apni date rehti hai, badlo to sab pe lagti hai. (2) Lamba toast message screen se bahar nahi jaata. (3) Refill/History/Report totals 2 decimal pe round (float junk nahi). (4) Gemini key URL ki jagah header (x-goog-api-key) mein; 'thinking' parts ignore; model not-found pe agla model try. Full end-to-end test (30+ checks) dono files pe pass.
 - **v1.2.0 (2026-10-23)** — Naya **💊 Rate** tab: product naam + purchase rate list, search (live, match highlight), add/edit/delete, same naam dobara daalne pe rate update, "nahi mila" pe usi naam se jodne ka button. Backup export/import mein products shamil. Poora look ShopSathi jaisa **Silver Mirror + Gold** (mirror header + gold line, gunmetal buttons gold text, Baloo 2 font, silver mirror background). Demo mein 6 sample products.
@@ -17,6 +18,7 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - **v1.0.0** — Pehla version: Due List, Patients, Report, Add/Edit, prescription photo, WhatsApp reminder, backup export/import, device-locked activation.
 
 ## Features
+- **Mode switch** — upar 💊 Rate List / 👥 Patient List button; aakhri chuna mode yaad rehta hai
 - **Due List** — 🔴 Late, 🟡 Aaj due, 🔵 Aane waale din (lead time ke andar)
 - **Patients** — naam/mobile search, Edit, History, Refill
 - **Naya patient** — naam, mobile, kai dawaiyan (naam, ₹ price, kitne din chalegi), aakhri kharid ki date
@@ -31,6 +33,7 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 
 ## Storage
 - `localStorage`: `dk_patients`, `dk_products`, `dk_settings` (demo: `dk_demo_patients`, `dk_demo_products`, `dk_demo_settings`)
+- `dk_mode` = 'rate' / 'pat' (aakhri khula mode)
 - `dk_gem` = Gemini key + model (sirf phone mein, backup mein nahi jaata)
 - Product: `{id, name, party, rate, updated}`
 - IndexedDB `dk_photos` → store `rx` (prescription photos, key = patient id)

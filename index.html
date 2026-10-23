@@ -191,6 +191,13 @@ mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
 .chk-line input{width:20px; height:20px; accent-color:var(--gun);}
 .keyrow{display:flex; gap:6px;} .keyrow input{flex:1;}
 .keyrow button{flex:0 0 46px; border:1.5px solid #C9CDD2; background:#fff; border-radius:10px; font-size:16px; cursor:pointer;}
+/* Mode switch: Rate List / Patient List */
+.mode-bar{display:flex; gap:8px; max-width:640px; margin:0 auto; padding:12px 14px 0;}
+.mode-btn{flex:1; background:#fff; color:var(--gun); border:1.5px solid var(--gold); border-radius:12px; padding:13px 8px; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit;}
+.mode-btn.on{background:var(--gun); color:var(--gold-l); border-color:var(--gun); box-shadow:0 3px 10px rgba(42,45,49,.25);}
+body.mode-rate nav{display:none;}
+body.mode-rate{padding-bottom:20px;}
+body.mode-pat #nav-rates{display:none;}
 /* Toast */
 #toast{
   position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
@@ -281,8 +288,13 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
   <button class="icon-btn" onclick="openSettings()">⚙️</button>
 </header>
 
+<div class="mode-bar">
+  <button class="mode-btn" id="modeRate" onclick="setMode('rate')">💊 Rate List</button>
+  <button class="mode-btn" id="modePat" onclick="setMode('pat')">👥 Patient List</button>
+</div>
+
 <!-- DUE SCREEN -->
-<div class="screen active" id="scr-due">
+<div class="screen" id="scr-due">
   <div id="dueList"></div>
 </div>
 
@@ -591,7 +603,7 @@ function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   document.getElementById('scr-'+name).classList.add('active');
-  document.getElementById('nav-'+name).classList.add('active');
+  const nb = document.getElementById('nav-'+name); if(nb) nb.classList.add('active');
   if(name==='due') renderDue();
   if(name==='patients') renderPatients();
   if(name==='rates') renderRates();
@@ -1045,6 +1057,18 @@ function saveScan(){
   toast('✓ '+added+' naye, '+updated+' update — '+party);
 }
 
+// ---------- Mode: Rate List / Patient List ----------
+function setMode(m){
+  if(m !== 'pat') m = 'rate';
+  document.body.classList.remove('mode-rate','mode-pat');
+  document.body.classList.add('mode-'+m);
+  document.getElementById('modeRate').classList.toggle('on', m === 'rate');
+  document.getElementById('modePat').classList.toggle('on', m === 'pat');
+  try{ localStorage.setItem('dk_mode', m); }catch(e){}
+  showScreen(m === 'rate' ? 'rates' : 'due');
+}
+function savedMode(){ try{ return localStorage.getItem('dk_mode') || 'rate'; }catch(e){ return 'rate'; } }
+
 // ---------- Settings ----------
 function openSettings(){
   document.getElementById('setShop').value = settings.shop;
@@ -1156,7 +1180,7 @@ function importData(ev){
 
 // ---------- Init ----------
 load();
-renderDue();
+setMode(savedMode());
 loadPhotoIndex().then(function(){ renderDue(); renderPatients(); });
 // ---------- PWA ----------
 if('serviceWorker' in navigator && /^https?:/.test(location.protocol)){
