@@ -6,8 +6,11 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - `index.html` — main app
 - `demo.html` — demo version (dummy data, upar "DEMO" banner + WhatsApp link)
 - `README.md`
+- `manifest.json`, `sw.js` — PWA install + offline
+- `icons/` — `logo.svg` (master), `maskable.svg`, `icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon.png`, `favicon-48.png`
 
 ## Version history
+- **v1.4.0 (2026-10-23)** — **Mobile app icon + install**: Silver mirror + gold icon (gold medical cross pe khata lines, kone mein gunmetal badge pe capsule goli), Android gol icon ke liye alag maskable version. `manifest.json` (naam DawaKhata, standalone), `sw.js` (offline chalta hai, network-first; Gemini/WhatsApp ko nahi chhoota). Home screen pe 'Install / Add to Home screen' se app jaisa khulta hai. Demo mein bhi icon (par install manifest nahi).
 - **v1.3.0 (2026-10-23)** — **📷 Bill Scan (Gemini)**: Rate tab mein "Bill Photo" / "Gallery se" (kai page ek saath). Gemini bill padh ke party naam, bill no/date, har product ka naam, qty, free, rate, disc %, GST % nikalta hai. Final rate = Rate − Disc% + GST% (free qty on ho to ×qty/(qty+free); rate na mile to amount/qty). Check screen: party naam, har line ka naam/rate edit, tick hatao, tag Naya / Purana→Naya / Same. Product ab **party-wise** save (naam + party = ek entry; alag party = alag rate). Manual form mein Party field (purani parties ki list). Search party naam se bhi. Settings mein Gemini API key + model. **Fix:** v1.1.0 mein galti se hata Settings popup wapas laaya (⚙️ button ab chalta hai). **Bug fixes (full audit):** (1) Patient edit karne pe saari dawaiyon ki date pehli dawai ki date ban jaati thi — ab date na badlo to har dawai ki apni date rehti hai, badlo to sab pe lagti hai. (2) Lamba toast message screen se bahar nahi jaata. (3) Refill/History/Report totals 2 decimal pe round (float junk nahi). (4) Gemini key URL ki jagah header (x-goog-api-key) mein; 'thinking' parts ignore; model not-found pe agla model try. Full end-to-end test (30+ checks) dono files pe pass.
 - **v1.2.0 (2026-10-23)** — Naya **💊 Rate** tab: product naam + purchase rate list, search (live, match highlight), add/edit/delete, same naam dobara daalne pe rate update, "nahi mila" pe usi naam se jodne ka button. Backup export/import mein products shamil. Poora look ShopSathi jaisa **Silver Mirror + Gold** (mirror header + gold line, gunmetal buttons gold text, Baloo 2 font, silver mirror background). Demo mein 6 sample products.
 - **v1.1.0 (2026-10-23)** — License / activation key system poora hataya (lock screen, Device ID, activation code, `dk_key` check). App ab seedha khulta hai. `demo.html` mein bhi activation code hataya; demo ka WhatsApp link (`OWNER_WA`) rakha hai.
@@ -34,6 +37,7 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - Purani keys `dk_device`, `dk_key` ab use nahi hoti (phone mein padi rahein to koi farak nahi)
 
 ## Decisions
+- Naya version daalne pe `sw.js` mein CACHE naam (dawakhata-vX.Y.Z) badalna, taaki phone pe naya code aaye.
 - License key hataya — app ab free / bina lock ke chalega.
 - Theme = ShopSathi wala Silver Mirror + Gold (bg #E9EBEE, gold #D9A833, gunmetal #2A2D31).
 - Rate list abhi patient ki dawai se linked nahi hai (alag list).
@@ -45,5 +49,4 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - Bill scan asli bills pe test karna (Gemini key ke saath)
 - Rate list se patient form mein dawai ka naam auto-suggest
 - Sale rate / MRP / margin column (abhi sirf purchase rate)
-- PWA manifest + service worker nahi hai (offline install ke liye jodna padega)
 - Photos backup JSON mein shamil nahi hoti
