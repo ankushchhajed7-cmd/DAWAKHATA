@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+<linearGradient id="s" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="512" y2="512"><stop offset="0" stop-color="#8E9399"/><stop offset=".25" stop-color="#E3E6E9"/><stop offset=".4" stop-color="#FFFFFF"/><stop offset=".52" stop-color="#C2C7CC"/><stop offset=".66" stop-color="#A9AEB4"/><stop offset=".82" stop-color="#E6E9EC"/><stop offset="1" stop-color="#FAFBFC"/></linearGradient>
+<linearGradient id="g" gradientUnits="userSpaceOnUse" x1="60" y1="60" x2="452" y2="452"><stop offset="0" stop-color="#8A6516"/><stop offset=".22" stop-color="#E8C25A"/><stop offset=".38" stop-color="#FFF4C2"/><stop offset=".46" stop-color="#D9A833"/><stop offset=".62" stop-color="#7E5A12"/><stop offset=".8" stop-color="#E6BF55"/><stop offset="1" stop-color="#FFF0B0"/></linearGradient>
+<linearGradient id="d" gradientUnits="userSpaceOnUse" x1="300" y1="300" x2="500" y2="500"><stop offset="0" stop-color="#1A1C1F"/><stop offset=".35" stop-color="#4A4F55"/><stop offset=".55" stop-color="#2A2D31"/><stop offset="1" stop-color="#16181B"/></linearGradient>
+<radialGradient id="sh" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+</defs>
+<g id="art">
+<rect width="512" height="512" rx="112" fill="url(#s)"/>
+<rect width="512" height="512" rx="112" fill="url(#sh)"/>
+<rect x="10" y="10" width="492" height="492" rx="104" fill="none" stroke="url(#g)" stroke-width="10"/>
+<!-- gold medical cross -->
+<path d="M196 92h100a14 14 0 0 1 14 14v84h84a14 14 0 0 1 14 14v100a14 14 0 0 1-14 14h-84v84a14 14 0 0 1-14 14H196a14 14 0 0 1-14-14v-84H98a14 14 0 0 1-14-14V204a14 14 0 0 1 14-14h84v-84a14 14 0 0 1 14-14z" fill="url(#g)" stroke="#2A2D31" stroke-width="10" stroke-linejoin="round" transform="translate(-14 -14)"/>
+<!-- khata lines on cross -->
+<g stroke="#6E4F0E" stroke-width="9" stroke-linecap="round" opacity=".55">
+<path d="M196 236h80M196 266h80M196 296h56" transform="translate(-14 -14)"/>
+</g>
+<!-- pill badge -->
+<circle cx="392" cy="392" r="86" fill="url(#d)" stroke="url(#g)" stroke-width="9"/>
+<g transform="rotate(-45 392 392)">
+<rect x="336" y="364" width="112" height="56" rx="28" fill="url(#s)" stroke="#16181B" stroke-width="5"/>
+<path d="M392 364h28a28 28 0 0 1 0 56h-28z" fill="url(#g)" stroke="#16181B" stroke-width="5"/>
+<rect x="350" y="374" width="34" height="9" rx="4.5" fill="#fff" opacity=".8"/>
+</g>
+</g>
+</svg>
