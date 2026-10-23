@@ -1,5 +1,5 @@
-/* DawaKhata service worker — v1.4.0 (network-first, offline cache) */
-const CACHE = 'dawakhata-v1.4.0';
+/* DawaKhata service worker — v1.5.0 (network-first, offline cache) */
+const CACHE = 'dawakhata-v1.5.0';
 const CORE = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-48.png'];
 const CDN = /^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
