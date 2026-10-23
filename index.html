@@ -198,6 +198,8 @@ mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
 body.mode-rate nav{display:none;}
 body.mode-rate{padding-bottom:20px;}
 body.mode-pat #nav-rates{display:none;}
+.hbtns{display:flex; gap:8px; align-items:center;}
+.icon-btn.spin{animation:sp .8s linear infinite;}
 /* Toast */
 #toast{
   position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
@@ -285,7 +287,10 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
       <div class="sub" id="shopSub">Medical Store Reminder</div>
     </div>
   </div>
-  <button class="icon-btn" onclick="openSettings()">⚙️</button>
+  <div class="hbtns">
+    <button class="icon-btn" id="refreshBtn" onclick="hardRefresh()" title="Refresh" aria-label="Refresh">🔄</button>
+    <button class="icon-btn" onclick="openSettings()" title="Settings" aria-label="Settings">⚙️</button>
+  </div>
 </header>
 
 <div class="mode-bar">
@@ -1068,6 +1073,25 @@ function setMode(m){
   showScreen(m === 'rate' ? 'rates' : 'due');
 }
 function savedMode(){ try{ return localStorage.getItem('dk_mode') || 'rate'; }catch(e){ return 'rate'; } }
+
+// ---------- Refresh (latest version) ----------
+function hardRefresh(){
+  var btn = document.getElementById('refreshBtn');
+  if(btn) btn.classList.add('spin');
+  toast('🔄 Latest version la raha hoon...');
+  function go(){ setTimeout(function(){ location.reload(); }, 350); }
+  if(!navigator.onLine){ go(); return; }  // offline: purana saved version hi khulega
+  var jobs = [];
+  try{
+    if('serviceWorker' in navigator && navigator.serviceWorker.getRegistration){
+      jobs.push(navigator.serviceWorker.getRegistration().then(function(r){ return r ? r.update() : null; }).catch(function(){}));
+    }
+    if(window.caches && caches.keys){
+      jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return k.indexOf('dawakhata-') === 0; }).map(function(k){ return caches.delete(k); })); }).catch(function(){}));
+    }
+  }catch(e){}
+  Promise.all(jobs).then(go, go);
+}
 
 // ---------- Settings ----------
 function openSettings(){
