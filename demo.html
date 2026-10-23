@@ -197,6 +197,8 @@ mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
 body.mode-rate nav{display:none;}
 body.mode-rate{padding-bottom:20px;}
 body.mode-pat #nav-rates{display:none;}
+.hbtns{display:flex; gap:8px; align-items:center;}
+.icon-btn.spin{animation:sp .8s linear infinite;}
 /* Toast */
 #toast{
   position:fixed; bottom:86px; left:50%; transform:translateX(-50%);
@@ -284,7 +286,10 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
       <div class="sub" id="shopSub">Medical Store Reminder</div>
     </div>
   </div>
-  <button class="icon-btn" onclick="openSettings()">⚙️</button>
+  <div class="hbtns">
+    <button class="icon-btn" id="refreshBtn" onclick="hardRefresh()" title="Refresh" aria-label="Refresh">🔄</button>
+    <button class="icon-btn" onclick="openSettings()" title="Settings" aria-label="Settings">⚙️</button>
+  </div>
 </header>
 <div class="demo-bar">🎬 Ye DEMO hai — dummy data ke saath. Full app ke liye <a id="demoWA" target="_blank">WhatsApp karein 💬</a></div>
 
@@ -951,28 +956,40 @@ function onBillFiles(ev){
     var parts = [{text: SCAN_PROMPT + (b64s.length > 1 ? ' The '+b64s.length+' images are pages of the same invoice; merge all items.' : '')}];
     b64s.forEach(function(d){ parts.push({inline_data:{mime_type:'image/jpeg', data:d}}); });
     var models = [cfg.model || GEM_DEFAULT].concat(GEM_FALLBACK.filter(function(m){ return m !== (cfg.model || GEM_DEFAULT); }));
+    var sawLimit = false, lastErr = '';
     function tryModel(i){
-      return gemCall(models[i], cfg.key, parts).then(function(res){
+      var model = models[i], more = i+1 < models.length;
+      if(i > 0) busy(true, 'Doosra Gemini model try kar raha hoon ('+model+')...');
+      return gemCall(model, cfg.key, parts).then(function(res){
         var em = (res.json && res.json.error && res.json.error.message) || '';
-        if(i+1 < models.length && (res.status === 404 || (res.status === 400 && /not found|not supported|unknown model|is not available/i.test(em)))) return tryModel(i+1);
-        if(res.status !== 200){
-          var m = (res.json && res.json.error && res.json.error.message) || ('HTTP '+res.status);
-          throw new Error(m);
+        var st = res.status;
+        if(st === 200){
+          try{ return {data: parseGemJSON(res.json), model: model}; }
+          catch(e){ lastErr = 'empty'; if(more) return tryModel(i+1); throw e; }
         }
-        return parseGemJSON(res.json);
+        var notFound = st === 404 || (st === 400 && /not found|not supported|unknown model|is not available/i.test(em));
+        var limit = st === 429 || /quota|RESOURCE_EXHAUSTED|rate limit/i.test(em);
+        var busyErr = st === 500 || st === 502 || st === 503 || st === 504 || /overloaded|UNAVAILABLE|try again later/i.test(em);
+        if(limit) sawLimit = true;
+        lastErr = em || ('HTTP '+st);
+        if(more && (notFound || limit || busyErr)) return tryModel(i+1);
+        if(sawLimit && (notFound || limit || busyErr)) throw new Error('quota');
+        if(busyErr) throw new Error('busy');
+        throw new Error(lastErr);
       });
     }
     return tryModel(0);
   })
-  .then(function(data){
+  .then(function(res){
     busy(false);
-    openScan(data || {});
+    openScan(res.data || {}, res.model);
   })
   .catch(function(err){
     busy(false);
     var m = String(err && err.message || err);
     if(/API key|API_KEY|permission|403|401/i.test(m)) toast('⚠️ Gemini key galat hai — Settings check karo');
-    else if(/quota|429|RESOURCE_EXHAUSTED/i.test(m)) toast('⚠️ Gemini ki free limit khatam — thodi der baad try karo');
+    else if(/quota|429|RESOURCE_EXHAUSTED/i.test(m)) toast('⚠️ Sabhi Gemini models ki free limit khatam — thodi der baad try karo');
+    else if(m === 'busy') toast('⚠️ Gemini abhi busy hai — 1 minute baad try karo');
     else if(/Failed to fetch|NetworkError/i.test(m)) toast('⚠️ Internet check karo');
     else if(m === 'empty' || /JSON/i.test(m)) toast('⚠️ Bill theek se nahi padh paya — saaf photo lo');
     else toast('⚠️ '+m.slice(0,60));
@@ -994,7 +1011,7 @@ function breakdown(it, useFree){
   if(num(it.qty)) s.push('Qty '+num(it.qty)+(num(it.free)?'+'+num(it.free)+' free'+(useFree?'':' (nahi ghataya)'):''));
   return s.join(' · ');
 }
-function openScan(data){
+function openScan(data, model){
   var items = Array.isArray(data.items) ? data.items : [];
   items = items.filter(function(it){ return String(it.name||'').trim(); });
   if(!items.length){ toast('⚠️ Bill mein koi product nahi mila — saaf photo lo'); return; }
@@ -1008,6 +1025,7 @@ function openScan(data){
   var meta = [];
   if(data.bill_no) meta.push('Bill No: '+esc(data.bill_no));
   if(data.bill_date) meta.push('Date: '+esc(data.bill_date));
+  if(model) meta.push('Model: '+esc(model));
   meta.push(scanItems.length+' products mile — naam/rate check karke Save karo');
   document.getElementById('scMeta').innerHTML = meta.join(' · ');
   recalcScan();
@@ -1071,6 +1089,25 @@ function setMode(m){
   showScreen(m === 'rate' ? 'rates' : 'due');
 }
 function savedMode(){ try{ return localStorage.getItem('dk_mode') || 'rate'; }catch(e){ return 'rate'; } }
+
+// ---------- Refresh (latest version) ----------
+function hardRefresh(){
+  var btn = document.getElementById('refreshBtn');
+  if(btn) btn.classList.add('spin');
+  toast('🔄 Latest version la raha hoon...');
+  function go(){ setTimeout(function(){ location.reload(); }, 350); }
+  if(!navigator.onLine){ go(); return; }  // offline: purana saved version hi khulega
+  var jobs = [];
+  try{
+    if('serviceWorker' in navigator && navigator.serviceWorker.getRegistration){
+      jobs.push(navigator.serviceWorker.getRegistration().then(function(r){ return r ? r.update() : null; }).catch(function(){}));
+    }
+    if(window.caches && caches.keys){
+      jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return k.indexOf('dawakhata-') === 0; }).map(function(k){ return caches.delete(k); })); }).catch(function(){}));
+    }
+  }catch(e){}
+  Promise.all(jobs).then(go, go);
+}
 
 // ---------- Settings ----------
 function openSettings(){
