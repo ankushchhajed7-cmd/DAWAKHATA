@@ -915,14 +915,17 @@ function blobToB64(blob){
     r.readAsDataURL(blob);
   });
 }
-var SCAN_PROMPT = 'This is a photo of an Indian purchase invoice (medical/pharma or wholesale) printed in English. ' +
+var SCAN_PROMPT = 'This is a photo of an Indian purchase invoice (medical/pharma or wholesale) printed in English. The photo may be rotated sideways or upside down - mentally rotate it so the text is upright before reading, and read each product row strictly left-to-right across its own row only. ' +
   'Read the item table and return ONLY JSON, no markdown, in this exact shape: ' +
-  '{"party":"","bill_no":"","bill_date":"","items":[{"name":"","pack":"","qty":0,"free":0,"rate":0,"disc_pct":0,"gst_pct":0,"amount":0}]}. ' +
+  '{"party":"","bill_no":"","bill_date":"","items":[{"name":"","pack":"","qty":0,"free":0,"rate":0,"sch_pct":0,"disc_pct":0,"nrate":0,"gst_pct":0,"amount":0}]}. ' +
   'Rules: "party" = the SELLER / supplier / distributor name printed at the top (not the buyer or the medical store it is billed to). ' +
   '"name" = product name exactly as printed with strength (e.g. "TELMA 40 TAB"). "pack" = pack size like "10\'S" or "1x15" if shown. ' +
-  '"qty" = billed quantity (number). "free" = free quantity (number, 0 if none); if the scheme is written like "10+1", qty=10 and free=1. ' +
-  '"rate" = purchase rate per unit BEFORE discount and BEFORE GST (the Rate / PTR column, NOT MRP). ' +
-  '"disc_pct" = item discount percent (0 if none). "gst_pct" = total GST percent for that item (CGST+SGST, or IGST). ' +
+  '"qty" = billed quantity (number). ' +
+  '"free" = FREE QUANTITY in units, only when the bill shows a scheme like "10+1" or a column named Free/FQty. IMPORTANT: a column named "Sch" or "Scheme" holding a decimal like 3.0, 5.0 or 10.0 is a DISCOUNT PERCENT, NOT free quantity - put it in "sch_pct" and keep "free" = 0. ' +
+  '"rate" = purchase rate per unit BEFORE any discount and BEFORE GST (the Rate / PTR / PTS column, NOT the MRP column). ' +
+  '"sch_pct" = value of the Sch/Scheme percent column (0 if none). "disc_pct" = value of the Disc/DIS percent column (0 if none). ' +
+  '"nrate" = value printed in the N-Rate / Net Rate / Net PTR column (rate after discount, before GST); 0 if the bill has no such column. Copy it exactly as printed. ' +
+  '"gst_pct" = TOTAL GST percent of the item = SGST% + CGST% added together (e.g. 2.5 + 2.5 = 5, 6 + 6 = 12), or the IGST%. Never return just one half. ' +
   '"amount" = the line amount as printed. All numbers must be plain numbers without currency symbols or commas. ' +
   'Include every product line, skip totals, taxes summary and blank rows. If a value is not visible use 0 or "".';
 function gemCall(model, key, parts){
@@ -994,8 +997,12 @@ function onBillFiles(ev){
 }
 function num(v){ var n = parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? 0 : n; }
 function calcFinal(it, useFree){
-  var rate = num(it.rate), qty = num(it.qty), free = num(it.free), d = num(it.disc_pct), g = num(it.gst_pct), amt = num(it.amount);
-  var base = rate > 0 ? rate*(1-d/100) : (qty > 0 && amt > 0 ? amt/qty : 0);
+  var rate = num(it.rate), nrate = num(it.nrate), qty = num(it.qty), free = num(it.free);
+  var sch = num(it.sch_pct), d = num(it.disc_pct), g = num(it.gst_pct), amt = num(it.amount);
+  var base;
+  if(nrate > 0 && (rate <= 0 || nrate <= rate*1.001)) base = nrate;            // bill ka N-Rate sabse bharosemand
+  else if(rate > 0) base = rate*(1-sch/100)*(1-d/100);
+  else base = (qty > 0 && amt > 0 ? amt/qty : 0);
   var v = base*(1+g/100);
   if(useFree && qty > 0 && free > 0) v = v*qty/(qty+free);
   return Math.round(v*100)/100;
@@ -1003,7 +1010,9 @@ function calcFinal(it, useFree){
 function breakdown(it, useFree){
   var s = [];
   if(num(it.rate)) s.push('Rate ₹'+num(it.rate));
-  if(num(it.disc_pct)) s.push('−'+num(it.disc_pct)+'%');
+  if(num(it.sch_pct)) s.push('Sch −'+num(it.sch_pct)+'%');
+  if(num(it.disc_pct)) s.push('Disc −'+num(it.disc_pct)+'%');
+  if(num(it.nrate)) s.push('N-Rate ₹'+num(it.nrate));
   if(num(it.gst_pct)) s.push('+'+num(it.gst_pct)+'% GST');
   if(num(it.qty)) s.push('Qty '+num(it.qty)+(num(it.free)?'+'+num(it.free)+' free'+(useFree?'':' (nahi ghataya)'):''));
   return s.join(' · ');
