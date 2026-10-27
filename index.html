@@ -318,6 +318,7 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
   </div>
   <button class="add-med" style="margin:2px 0 6px;" onclick="openRateForm()">+ Naya product jodo</button>
   <div id="rateList"></div>
+  <button class="btn btn-red" id="delAllBtn" style="margin:14px 0 6px; width:100%; display:none;" onclick="deleteAllRates()">🗑️ Sab purane products delete karo</button>
 </div>
 <input type="file" id="billCam" accept="image/*" capture="environment" style="display:none;" onchange="onBillFiles(event)">
 <input type="file" id="billGal" accept="image/*" multiple style="display:none;" onchange="onBillFiles(event)">
@@ -819,7 +820,17 @@ function fillPartyList(){
   products.forEach(p=>{ if(p.party) set[p.party] = 1; });
   document.getElementById('partyList').innerHTML = Object.keys(set).sort().map(p=>'<option value="'+esc(p)+'">').join('');
 }
+function deleteAllRates(){
+  var n = products.length;
+  if(!n){ toast('List pehle se khaali hai'); return; }
+  if(!confirm('Pakka? Rate list ke saare '+n+' products delete ho jayenge.\nYe wapas nahi aayega.')) return;
+  if(!confirm('Aakhri baar puchh raha hoon — saare '+n+' products delete kar dun?')) return;
+  products = [];
+  save(); renderRates();
+  toast('🗑️ Saare '+n+' products delete ho gaye');
+}
 function renderRates(){
+  var db = document.getElementById('delAllBtn'); if(db) db.style.display = products.length ? 'block' : 'none';
   const raw = (document.getElementById('rateSearch').value||'').trim();
   const q = raw.toLowerCase();
   const el = document.getElementById('rateList');
