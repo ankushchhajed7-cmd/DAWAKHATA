@@ -172,6 +172,7 @@ mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
 .rt-party{font-size:12.5px; color:var(--gold-dd); font-weight:700; margin-top:2px;}
 #busy{position:fixed; inset:0; background:rgba(31,34,38,.55); z-index:150; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; color:#fff; font-weight:800; font-size:15px; text-align:center; padding:20px;}
 #busy.show{display:flex;}
+#busyMsg{white-space:pre-line;}
 .spin{width:46px; height:46px; border-radius:50%; border:5px solid rgba(255,255,255,.25); border-top-color:var(--gold); animation:sp 1s linear infinite;}
 @keyframes sp{to{transform:rotate(360deg);}}
 .scan-meta{font-size:12.5px; color:var(--muted); margin:4px 0 8px;}
@@ -1060,9 +1061,75 @@ function parseGemJSON(j){
   if(a < 0 || b < 0) throw new Error('empty');
   return JSON.parse(txt.slice(a, b+1));
 }
-function readBill(b64s){
+// ---- Screen ON rakhna + screen band hone pe request bachana — v1.7.1 ----
+var SCAN_SLOT = /demo\.html/i.test(location.pathname) ? 'demo' : 'main';
+var LASTSCAN_KEY = SCAN_SLOT === 'demo' ? 'dk_demo_lastscan' : 'dk_lastscan';
+var wakeLk = null, scanRunning = false, scanHidden = false, scanRetryB64 = null;
+function keepAwake(on){
+  try{ if(window.ANVScreen && ANVScreen.keepOn) ANVScreen.keepOn(!!on); }catch(e){}   // APK
+  if(on){
+    if('wakeLock' in navigator && !wakeLk){
+      navigator.wakeLock.request('screen').then(function(l){
+        wakeLk = l;
+        l.addEventListener('release', function(){ if(wakeLk === l) wakeLk = null; });
+        if(!scanRunning){ try{ l.release(); }catch(e){} }
+      }).catch(function(){});
+    }
+  } else if(wakeLk){ try{ wakeLk.release(); }catch(e){} wakeLk = null; }
+}
+function scanDB(){
+  return new Promise(function(resolve, reject){
+    var r = indexedDB.open('dk_scan', 1);
+    r.onupgradeneeded = function(){ r.result.createObjectStore('pending'); };
+    r.onsuccess = function(){ resolve(r.result); };
+    r.onerror = function(){ reject(r.error); };
+  });
+}
+function pendingSet(v){
+  return scanDB().then(function(db){ return new Promise(function(resolve){
+    var tx = db.transaction('pending', 'readwrite'), st = tx.objectStore('pending');
+    if(v) st.put(v, SCAN_SLOT); else st.delete(SCAN_SLOT);
+    tx.oncomplete = function(){ resolve(); }; tx.onerror = function(){ resolve(); };
+  }); }).catch(function(){});
+}
+function pendingGet(){
+  return scanDB().then(function(db){ return new Promise(function(resolve){
+    var q = db.transaction('pending', 'readonly').objectStore('pending').get(SCAN_SLOT);
+    q.onsuccess = function(){ resolve(q.result || null); }; q.onerror = function(){ resolve(null); };
+  }); }).catch(function(){ return null; });
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden){ if(scanRunning) scanHidden = true; return; }
+  if(scanRunning) keepAwake(true);            // screen wapas aayi -> lock dobara
+  if(scanRetryB64){
+    var b = scanRetryB64; scanRetryB64 = null;
+    toast('🔄 Screen band hui thi — bill dobara padh raha hoon');
+    readBill(b, true);
+  }
+});
+// App band hokar dobara khula: Gemini ka jawab aa chuka tha to check screen wapas, warna adhoora bill dobara padho
+function resumeScan(){
+  var ls = null, day = 24*3600*1000;
+  try{ ls = JSON.parse(localStorage.getItem(LASTSCAN_KEY)); }catch(e){}
+  if(ls && ls.data && Date.now() - (ls.t||0) < day){
+    pendingSet(null);
+    setTimeout(function(){ openScan(ls.data, ls.model); toast('🧾 Pichhla scan wapas khula — check karke Save karo'); }, 300);
+    return;
+  }
+  try{ localStorage.removeItem(LASTSCAN_KEY); }catch(e){}
+  pendingGet().then(function(p){
+    if(!p) return;
+    if(p.b64s && p.b64s.length && Date.now() - (p.t||0) < day && gemCfg().key &&
+       confirm('Pichhla bill padhte waqt app band ho gaya tha.\nUse dobara padhun?')) readBill(p.b64s, true);
+    else pendingSet(null);
+  });
+}
+function readBill(b64s, isRetry){
   var cfg = gemCfg();
-  busy(true, b64s.length > 1 ? b64s.length+' photo padh raha hoon...' : 'Bill padh raha hoon...');
+  scanRunning = true; scanHidden = document.hidden; scanRetryB64 = null;
+  keepAwake(true);
+  pendingSet({b64s:b64s, t:Date.now()});
+  busy(true, (isRetry ? 'Dobara: ' : '') + (b64s.length > 1 ? b64s.length+' photo padh raha hoon...' : 'Bill padh raha hoon...') + '\n📱 Screen ON rakho');
   var parts = [{text: SCAN_PROMPT + (b64s.length > 1 ? ' The '+b64s.length+' images are pages of the same invoice; merge all items.' : '')}];
   b64s.forEach(function(d){ parts.push({inline_data:{mime_type:'image/jpeg', data:d}}); });
   var models = [cfg.model || GEM_DEFAULT].concat(GEM_FALLBACK.filter(function(m){ return m !== (cfg.model || GEM_DEFAULT); }));
@@ -1090,12 +1157,23 @@ function readBill(b64s){
   }
   tryModel(0)
   .then(function(res){
+    scanRunning = false; keepAwake(false);
+    try{ localStorage.setItem(LASTSCAN_KEY, JSON.stringify({data:res.data || {}, model:res.model, t:Date.now()})); }catch(e){}
+    pendingSet(null);
     busy(false);
     openScan(res.data || {}, res.model);
   })
   .catch(function(err){
-    busy(false);
     var m = String(err && err.message || err);
+    var netFail = /Failed to fetch|NetworkError|Load failed|network|aborted/i.test(m);
+    scanRunning = false; keepAwake(false);
+    if(netFail && (scanHidden || document.hidden) && !isRetry){
+      if(document.hidden){ scanRetryB64 = b64s; busy(true, 'Screen khulte hi dobara padhunga...'); return; }
+      toast('🔄 Screen band hui thi — bill dobara padh raha hoon');
+      readBill(b64s, true); return;
+    }
+    if(!netFail) pendingSet(null);   // internet ki dikkat ho to photo rakho, app khulne pe dobara puchega
+    busy(false);
     if(/API key|API_KEY|permission|403|401/i.test(m)) toast('⚠️ Gemini key galat hai — Settings check karo');
     else if(/quota|429|RESOURCE_EXHAUSTED/i.test(m)) toast('⚠️ Sabhi Gemini models ki free limit khatam — thodi der baad try karo');
     else if(m === 'busy') toast('⚠️ Gemini abhi busy hai — 1 minute baad try karo');
@@ -1231,7 +1309,7 @@ function renderScan(){
 function refreshScanTags(){
   scanItems.forEach(function(s, i){ var t = document.getElementById('sct'+i); if(t) t.innerHTML = scanTag(s); });
 }
-function closeScan(){ document.getElementById('scanModal').classList.remove('show'); scanItems = []; scanBillData = {}; }
+function closeScan(){ document.getElementById('scanModal').classList.remove('show'); scanItems = []; scanBillData = {}; try{ localStorage.removeItem(LASTSCAN_KEY); }catch(e){} }
 function saveScan(){
   var party = document.getElementById('scParty').value.trim();
   if(!party){ toast('⚠️ Party ka naam daalo'); document.getElementById('scParty').focus(); return; }
@@ -1436,6 +1514,7 @@ document.getElementById('demoWA').href = 'https://wa.me/'+OWNER_WA+'?text='+enco
 seedDemo();
 setMode(savedMode());
 loadPhotoIndex().then(function(){ renderDue(); renderPatients(); });
+resumeScan();
 </script>
 </body>
 </html>
