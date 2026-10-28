@@ -10,6 +10,7 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - `icons/` — `logo.svg` (master), `maskable.svg`, `icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon.png`, `favicon-48.png`
 
 ## Version history
+- **v1.7.0 (2026-10-28)** — **Bill scan rate fix + Gallery fix.** (1) **📐 Bill seedha karo** screen: photo chunne ke baad preview, tedhi (sideways) photo apne aap seedhi hoti hai (likhai ki lines se andaaza), ulti ho to ⟳ Ghumao; Gemini ko hamesha seedhi photo jaati hai (2400px, quality 0.9 — pehle 1800px). (2) **Gallery fix:** gallery ab ek baar mein ek photo (APK/WebView mein multi-select wala picker photo nahi lautata tha, isliye upload hi nahi hoti thi); kai page wale bill ke liye preview mein **➕ Bill ka agla page jodo** + har page pe 🗑️ Hatao. (3) **Rate cross-check:** Gemini se MRP, Rate, Sch%, DIS%, N-Rate, SGST%/CGST%/IGST%, SGST/CGST/IGST amount, Amount, Grand Total alag-alag maange jaate hain (koi hisaab Gemini nahi karta). App har line ke 4 raaste (N-Rate, Rate×(1−Sch)(1−Dis), Amount/Qty, Tax amount se) milaata hai — jo 2+ se mile wahi Net rate; GST mein sirf aadha (2.5/6/9/14) aaye to dugna; GST% galat ho to line ke tax amount se sahi slab; Sch% ko free qty samjha ho to free hata deta hai. Final = Net × (1+GST%). Shak wali line laal ⚠️, upar bill Grand Total vs App total ✓/⚠️. Test: NIDHI PHARMA bill (25 lines) — sab 25 rate sahi, bill total match. sw cache v1.7.0.
 - **v1.6.0 (2026-10-23)** — Header mein **🔄 Refresh** button (⚙️ ke paas): online ho to purana cache hata ke service worker update karke reload, offline ho to bas reload (saved version khulta hai). Data (patients, rates, Gemini key, mode) safe rehta hai. sw cache v1.6.0. **Gemini auto model switch:** model na mile (404), free limit khatam (429) ya busy (500/503) ho to apne aap agla model (3.8-flash → flash-latest → 3.5-flash-lite); jawab samajh na aaye to bhi agla. Sab fail ho tabhi message (sab limit pe → 'Sabhi models ki free limit khatam', busy → '1 minute baad try karo'). Galat key pe turant message (dusre model try nahi). Check screen pe 'Model: …' dikhta hai. sw cache v1.6.1.
 - **v1.5.0 (2026-10-23)** — Header ke neeche do button (Bill Photo/Gallery jaise): **💊 Rate List** (pehla) aur **👥 Patient List** (doosra); chuna hua dark gunmetal. Rate List = sirf Rate page (neeche nav nahi). Patient List = purana set (Due List, Patients, Report, Naya). App pichhli baar wala mode yaad rakhta hai (`dk_mode`), pehli baar Rate List. sw cache v1.5.0.
 - **v1.4.0 (2026-10-23)** — **Mobile app icon + install**: Silver mirror + gold icon (gold medical cross pe khata lines, kone mein gunmetal badge pe capsule goli), Android gol icon ke liye alag maskable version. `manifest.json` (naam DawaKhata, standalone), `sw.js` (offline chalta hai, network-first; Gemini/WhatsApp ko nahi chhoota). Home screen pe 'Install / Add to Home screen' se app jaisa khulta hai. Demo mein bhi icon (par install manifest nahi).
@@ -29,7 +30,7 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - **Prescription photo** — camera se photo, compress karke IndexedDB mein save
 - **Report** — is mahine ki sale/refills, lifetime sale, total patients, status count, top 5 dawaiyan
 - **Rate list** — product + party + final purchase rate ₹, search (product ya party), tap karke rate badlo / delete; har product pe last update date
-- **Bill Scan** — bill ki photo → Gemini → check screen → party-wise products save
+- **Bill Scan** — bill ki photo (camera / gallery, kai page) → seedha karo (auto + ⟳) → Gemini → har line cross-check (⚠️ shak) + bill total match → check screen → party-wise products save
 - **Settings** — shop naam, reminder kitne din pehle (2/3/5), Gemini API key + model
 - **Backup** — JSON export/import
 
@@ -48,10 +49,14 @@ Medical store ke liye refill reminder PWA (single-file HTML, GitHub Pages). Pati
 - Rate list abhi patient ki dawai se linked nahi hai (alag list).
 - Bill scan ke liye Gemini (free key, aistudio.google.com/apikey). Default model gemini-3.8-flash; 404/429/5xx pe apne aap gemini-flash-latest, phir gemini-3.5-flash-lite (Settings ka Model box khali = default).
 - Ek product alag-alag party se → alag entry, taaki rate compare ho sake.
-- Bill ka cash discount (poore bill pe) rate mein nahi ghataya jaata — sirf item ka disc %.
+- Bill ka cash discount (poore bill pe) rate mein nahi ghataya jaata — sirf item ka Sch % / disc %.
+- Final rate = Net rate (N-Rate) + GST, per unit (strip/bottle) jaisa bill mein Qty hai.
+- Gemini sirf bill ke chhape number copy kare; saara hisaab app karta hai (cross-check ke saath).
+- Gallery input `multiple` nahi — APK WebView (`parseResult`) multi-select (ClipData) nahi padhta.
 
 ## Pending / ideas
-- Bill scan asli bills pe test karna (Gemini key ke saath)
+- Bill scan asli Gemini key ke saath aur bills pe test karna (logic NIDHI PHARMA bill data pe pass)
+- apk-factory: gallery picker ClipData + multiple support (abhi app side se single photo karke bacha)
 - Rate list se patient form mein dawai ka naam auto-suggest
 - Sale rate / MRP / margin column (abhi sirf purchase rate)
 - Photos backup JSON mein shamil nahi hoti

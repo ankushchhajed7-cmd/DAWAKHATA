@@ -187,6 +187,16 @@ mark{background:#FFF1A8; color:inherit; border-radius:3px; padding:0 1px;}
 .tag.new{background:#E3F1E7; color:#1E6B3A;}
 .tag.up{background:#FBF0D6; color:#7A5A10;}
 .tag.same{background:#EEF0F2; color:var(--ink2);}
+.tag.warn{background:#FDE7E3; color:#A3311B;}
+.scan-item.warn{border-color:#E8A090; background:#FFF8F6;}
+.scan-item.warn .sr{border-color:#D9644A;}
+.scan-check{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 6px;}
+.scan-check .tag{white-space:normal; font-size:11.5px;}
+.rot-page{border:1px solid var(--line); border-radius:12px; padding:8px; margin-bottom:10px; background:#fff; text-align:center;}
+.rot-page img{display:block; width:100%; max-height:52vh; object-fit:contain; border-radius:8px; background:#f4f4f4;}
+.rot-btns{display:flex; gap:8px; margin-top:8px;}
+.rot-btns .scan-btn{flex:1;}
+.rot-no{font-size:12.5px; font-weight:800; color:var(--ink2); margin-bottom:6px;}
 .chk-line{display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:var(--ink2); margin:10px 0 6px;}
 .chk-line input{width:20px; height:20px; accent-color:var(--gun);}
 .keyrow{display:flex; gap:6px;} .keyrow input{flex:1;}
@@ -321,7 +331,7 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
   <button class="btn btn-red" id="delAllBtn" style="margin:14px 0 6px; width:100%; display:none;" onclick="deleteAllRates()">🗑️ Sab purane products delete karo</button>
 </div>
 <input type="file" id="billCam" accept="image/*" capture="environment" style="display:none;" onchange="onBillFiles(event)">
-<input type="file" id="billGal" accept="image/*" multiple style="display:none;" onchange="onBillFiles(event)">
+<input type="file" id="billGal" accept="image/*" style="display:none;" onchange="onBillFiles(event)">
 <div id="busy"><div class="spin"></div><div id="busyMsg">Bill padh raha hoon...</div></div>
 
 <!-- ADD/EDIT SCREEN -->
@@ -381,10 +391,23 @@ nav button.active .nv-ic{filter:drop-shadow(0 0 3px rgba(217,168,51,.6));}
     <label>Party / Supplier ka naam *</label>
     <input id="scParty" placeholder="Bill bhejne wali party" list="partyList" autocomplete="off" oninput="refreshScanTags()">
     <div class="scan-meta" id="scMeta"></div>
+    <div class="scan-check" id="scCheck"></div>
     <label class="chk-line"><input type="checkbox" id="scFree" checked onchange="recalcScan()"> Free qty ko rate mein ghatao (jaise 10+1)</label>
     <div id="scList"></div>
     <button class="save-btn" onclick="saveScan()">💾 Tick wale products Save Karo</button>
     <button class="btn btn-ghost" style="margin-top:10px; width:100%;" onclick="closeScan()">✕ Cancel</button>
+  </div>
+</div>
+
+<!-- BILL PHOTO SEEDHI KARO (ROTATE) MODAL -->
+<div class="modal-bg" id="rotModal">
+  <div class="modal" style="max-height:92vh;">
+    <h3>📐 Bill seedha karo</h3>
+    <div class="scan-meta">Likhai seedhi (padhne layak) dikhni chahiye. Tedhi/ulti ho to <b>⟳ Ghumao</b> dabao. Seedhi photo = sahi rate.</div>
+    <div id="rotList"></div>
+    <button class="btn btn-ghost" style="width:100%;" onclick="addBillPage()">➕ Bill ka agla page jodo (gallery se)</button>
+    <button class="save-btn" onclick="sendBill()">✓ Bill padho</button>
+    <button class="btn btn-ghost" style="margin-top:10px; width:100%;" onclick="closeRot()">✕ Cancel</button>
   </div>
 </div>
 
@@ -916,29 +939,118 @@ function startScan(kind){
     setTimeout(function(){ document.getElementById('setGemKey').focus(); }, 200);
     return;
   }
+  billAppend = false;
   document.getElementById(kind === 'cam' ? 'billCam' : 'billGal').click();
 }
-function blobToB64(blob){
+// ---- Photo seedhi karna (rotate preview) — v1.7.0 ----
+var billPages = [];   // {img, url, rot}  rot = clockwise degrees
+function loadImg(file){
   return new Promise(function(resolve, reject){
-    var r = new FileReader();
-    r.onload = function(){ resolve(String(r.result).split(',')[1]); };
-    r.onerror = reject;
-    r.readAsDataURL(blob);
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){ resolve({img:img, url:url}); };
+    img.onerror = function(e){ URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
   });
 }
-var SCAN_PROMPT = 'This is a photo of an Indian purchase invoice (medical/pharma or wholesale) printed in English. The photo may be rotated sideways or upside down - mentally rotate it so the text is upright before reading, and read each product row strictly left-to-right across its own row only. ' +
-  'Read the item table and return ONLY JSON, no markdown, in this exact shape: ' +
-  '{"party":"","bill_no":"","bill_date":"","items":[{"name":"","pack":"","qty":0,"free":0,"rate":0,"sch_pct":0,"disc_pct":0,"nrate":0,"gst_pct":0,"amount":0}]}. ' +
+function drawRot(img, rot, maxDim){
+  var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  var k = Math.min(1, maxDim/Math.max(w, h)), sw = Math.round(w*k), sh = Math.round(h*k);
+  var side = rot % 180 !== 0;
+  var c = document.createElement('canvas');
+  c.width = side ? sh : sw; c.height = side ? sw : sh;
+  var x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.translate(c.width/2, c.height/2); x.rotate(rot*Math.PI/180);
+  x.drawImage(img, -sw/2, -sh/2, sw, sh);
+  return c;
+}
+// Likhai ki lines aadi (horizontal) hain ya khadi? khadi ho to 270° (ulta ghadi) guess
+function sideScore(d, W, H){
+  var n = W*H, g = new Float32Array(n), i, x, y;
+  for(i = 0; i < n; i++) g[i] = d[i*4]*0.299 + d[i*4+1]*0.587 + d[i*4+2]*0.114;
+  var W1 = W+1, S = new Float64Array(W1*(H+1));
+  for(y = 0; y < H; y++){ var rs = 0; for(x = 0; x < W; x++){ rs += g[y*W+x]; S[(y+1)*W1+x+1] = S[y*W1+x+1] + rs; } }
+  var r = 6, rows = new Float64Array(H), cols = new Float64Array(W), tot = 0;
+  for(y = 0; y < H; y++){
+    var y1 = Math.max(0, y-r), y2 = Math.min(H, y+r+1);
+    for(x = 0; x < W; x++){
+      var x1 = Math.max(0, x-r), x2 = Math.min(W, x+r+1);
+      var m = (S[y2*W1+x2] - S[y1*W1+x2] - S[y2*W1+x1] + S[y1*W1+x1]) / ((x2-x1)*(y2-y1));
+      if(m - g[y*W+x] > 25){ rows[y]++; cols[x]++; tot++; }
+    }
+  }
+  function sc(a, len){ var s = 0; for(var j = 1; j < a.length; j++){ var e = (a[j]-a[j-1])/len; s += e*e; } return s/a.length; }
+  return {rows: sc(rows, W), cols: sc(cols, H), ink: tot};
+}
+function guessRot(img){
+  try{
+    var c = drawRot(img, 0, 400);
+    var s = sideScore(c.getContext('2d').getImageData(0, 0, c.width, c.height).data, c.width, c.height);
+    if(s.ink < 300) return 0;
+    return s.cols > s.rows*1.2 ? 270 : 0;
+  }catch(e){ return 0; }
+}
+// Gallery ek baar mein ek photo (APK WebView mein multi-select photo nahi lautata); aur page '+ Agla page' se
+var billAppend = false;
+function addBillPage(){ billAppend = true; document.getElementById('billGal').click(); }
+function onBillFiles(ev){
+  var files = Array.prototype.slice.call(ev.target.files || []);
+  ev.target.value = '';
+  var append = billAppend; billAppend = false;
+  if(!files.length) return;
+  if(!append) closeRot();
+  busy(true, 'Photo khol raha hoon...');
+  Promise.all(files.map(loadImg)).then(function(arr){
+    billPages = billPages.concat(arr.map(function(p){ return {img:p.img, url:p.url, rot:guessRot(p.img)}; }));
+    busy(false);
+    renderRot();
+    document.getElementById('rotModal').classList.add('show');
+  }).catch(function(){ busy(false); toast('⚠️ Photo khul nahi payi — dobara lo'); });
+}
+function renderRot(){
+  var many = billPages.length > 1;
+  document.getElementById('rotList').innerHTML = billPages.map(function(p, i){
+    return '<div class="rot-page">'+
+      (many ? '<div class="rot-no">Page '+(i+1)+'</div>' : '')+
+      '<img alt="bill" src="'+drawRot(p.img, p.rot, 900).toDataURL('image/jpeg', 0.8)+'">'+
+      '<div class="rot-btns"><button class="scan-btn alt" onclick="rotPage('+i+')">⟳ Ghumao</button>'+
+      (many ? '<button class="scan-btn alt" onclick="delPage('+i+')">🗑️ Hatao</button>' : '')+'</div>'+
+    '</div>';
+  }).join('');
+}
+function rotPage(i){ billPages[i].rot = (billPages[i].rot + 90) % 360; renderRot(); }
+function delPage(i){ try{ URL.revokeObjectURL(billPages[i].url); }catch(e){} billPages.splice(i, 1); renderRot(); }
+function closeRot(){
+  document.getElementById('rotModal').classList.remove('show');
+  billPages.forEach(function(p){ try{ URL.revokeObjectURL(p.url); }catch(e){} });
+  billPages = [];
+  document.getElementById('rotList').innerHTML = '';
+}
+function sendBill(){
+  if(!billPages.length) return;
+  var b64s;
+  try{
+    b64s = billPages.map(function(p){ return drawRot(p.img, p.rot, 2400).toDataURL('image/jpeg', 0.9).split(',')[1]; });
+  }catch(e){ toast('⚠️ Photo tayyar nahi ho payi'); return; }
+  closeRot();
+  readBill(b64s);
+}
+
+var SCAN_PROMPT = 'This is an upright photo of an Indian purchase invoice (medical/pharma or wholesale) printed in English. Read the item table row by row; for every row read the values strictly across that same row, digit by digit, exactly as printed. Do NOT calculate or round anything - only copy printed numbers. ' +
+  'Return ONLY JSON, no markdown, in this exact shape: ' +
+  '{"party":"","bill_no":"","bill_date":"","grand_total":0,"items":[{"name":"","pack":"","qty":0,"free":0,"mrp":0,"rate":0,"sch_pct":0,"disc_pct":0,"nrate":0,"sgst_pct":0,"cgst_pct":0,"igst_pct":0,"gst_pct":0,"sgst_amt":0,"cgst_amt":0,"igst_amt":0,"gst_amt":0,"amount":0}]}. ' +
   'Rules: "party" = the SELLER / supplier / distributor name printed at the top (not the buyer or the medical store it is billed to). ' +
+  '"grand_total" = the final Grand Total / Net Amount payable of the whole bill. ' +
   '"name" = product name exactly as printed with strength (e.g. "TELMA 40 TAB"). "pack" = pack size like "10\'S" or "1x15" if shown. ' +
   '"qty" = billed quantity (number). ' +
   '"free" = FREE QUANTITY in units, only when the bill shows a scheme like "10+1" or a column named Free/FQty. IMPORTANT: a column named "Sch" or "Scheme" holding a decimal like 3.0, 5.0 or 10.0 is a DISCOUNT PERCENT, NOT free quantity - put it in "sch_pct" and keep "free" = 0. ' +
-  '"rate" = purchase rate per unit BEFORE any discount and BEFORE GST (the Rate / PTR / PTS column, NOT the MRP column). ' +
+  '"mrp" = the M.R.P column. "rate" = the Rate / PTR / PTS column (purchase rate per unit before discount and before GST) - never the MRP. ' +
   '"sch_pct" = value of the Sch/Scheme percent column (0 if none). "disc_pct" = value of the Disc/DIS percent column (0 if none). ' +
-  '"nrate" = value printed in the N-Rate / Net Rate / Net PTR column (rate after discount, before GST); 0 if the bill has no such column. Copy it exactly as printed. ' +
-  '"gst_pct" = TOTAL GST percent of the item = SGST% + CGST% added together (e.g. 2.5 + 2.5 = 5, 6 + 6 = 12), or the IGST%. Never return just one half. ' +
-  '"amount" = the line amount as printed. All numbers must be plain numbers without currency symbols or commas. ' +
-  'Include every product line, skip totals, taxes summary and blank rows. If a value is not visible use 0 or "".';
+  '"nrate" = value printed in the N-Rate / Net Rate / Net PTR column; 0 if the bill has no such column. ' +
+  '"sgst_pct", "cgst_pct", "igst_pct" = the percent columns exactly as printed (e.g. SGST 2.50 and CGST 2.50); 0 if that column is absent. "gst_pct" = a single GST% column if the bill has one, else 0. ' +
+  '"sgst_amt", "cgst_amt", "igst_amt", "gst_amt" = tax AMOUNT columns of that row exactly as printed (e.g. a column "SGST Amt"); 0 if that column is absent. ' +
+  '"amount" = the last Amount column of the row as printed. All numbers must be plain numbers without currency symbols or commas. ' +
+  'Include every product line (even repeated names), skip totals, the tax summary and blank rows. If a value is not visible use 0 or "".';
 function gemCall(model, key, parts){
   return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent', {
     method:'POST',
@@ -956,41 +1068,35 @@ function parseGemJSON(j){
   if(a < 0 || b < 0) throw new Error('empty');
   return JSON.parse(txt.slice(a, b+1));
 }
-function onBillFiles(ev){
-  var files = Array.prototype.slice.call(ev.target.files || []);
-  ev.target.value = '';
-  if(!files.length) return;
+function readBill(b64s){
   var cfg = gemCfg();
-  busy(true, files.length > 1 ? files.length+' photo padh raha hoon...' : 'Bill padh raha hoon...');
-  Promise.all(files.map(function(f){ return compressImage(f, 1800, 0.85).then(blobToB64); }))
-  .then(function(b64s){
-    var parts = [{text: SCAN_PROMPT + (b64s.length > 1 ? ' The '+b64s.length+' images are pages of the same invoice; merge all items.' : '')}];
-    b64s.forEach(function(d){ parts.push({inline_data:{mime_type:'image/jpeg', data:d}}); });
-    var models = [cfg.model || GEM_DEFAULT].concat(GEM_FALLBACK.filter(function(m){ return m !== (cfg.model || GEM_DEFAULT); }));
-    var sawLimit = false, lastErr = '';
-    function tryModel(i){
-      var model = models[i], more = i+1 < models.length;
-      if(i > 0) busy(true, 'Doosra Gemini model try kar raha hoon ('+model+')...');
-      return gemCall(model, cfg.key, parts).then(function(res){
-        var em = (res.json && res.json.error && res.json.error.message) || '';
-        var st = res.status;
-        if(st === 200){
-          try{ return {data: parseGemJSON(res.json), model: model}; }
-          catch(e){ lastErr = 'empty'; if(more) return tryModel(i+1); throw e; }
-        }
-        var notFound = st === 404 || (st === 400 && /not found|not supported|unknown model|is not available/i.test(em));
-        var limit = st === 429 || /quota|RESOURCE_EXHAUSTED|rate limit/i.test(em);
-        var busyErr = st === 500 || st === 502 || st === 503 || st === 504 || /overloaded|UNAVAILABLE|try again later/i.test(em);
-        if(limit) sawLimit = true;
-        lastErr = em || ('HTTP '+st);
-        if(more && (notFound || limit || busyErr)) return tryModel(i+1);
-        if(sawLimit && (notFound || limit || busyErr)) throw new Error('quota');
-        if(busyErr) throw new Error('busy');
-        throw new Error(lastErr);
-      });
-    }
-    return tryModel(0);
-  })
+  busy(true, b64s.length > 1 ? b64s.length+' photo padh raha hoon...' : 'Bill padh raha hoon...');
+  var parts = [{text: SCAN_PROMPT + (b64s.length > 1 ? ' The '+b64s.length+' images are pages of the same invoice; merge all items.' : '')}];
+  b64s.forEach(function(d){ parts.push({inline_data:{mime_type:'image/jpeg', data:d}}); });
+  var models = [cfg.model || GEM_DEFAULT].concat(GEM_FALLBACK.filter(function(m){ return m !== (cfg.model || GEM_DEFAULT); }));
+  var sawLimit = false, lastErr = '';
+  function tryModel(i){
+    var model = models[i], more = i+1 < models.length;
+    if(i > 0) busy(true, 'Doosra Gemini model try kar raha hoon ('+model+')...');
+    return gemCall(model, cfg.key, parts).then(function(res){
+      var em = (res.json && res.json.error && res.json.error.message) || '';
+      var st = res.status;
+      if(st === 200){
+        try{ return {data: parseGemJSON(res.json), model: model}; }
+        catch(e){ lastErr = 'empty'; if(more) return tryModel(i+1); throw e; }
+      }
+      var notFound = st === 404 || (st === 400 && /not found|not supported|unknown model|is not available/i.test(em));
+      var limit = st === 429 || /quota|RESOURCE_EXHAUSTED|rate limit/i.test(em);
+      var busyErr = st === 500 || st === 502 || st === 503 || st === 504 || /overloaded|UNAVAILABLE|try again later/i.test(em);
+      if(limit) sawLimit = true;
+      lastErr = em || ('HTTP '+st);
+      if(more && (notFound || limit || busyErr)) return tryModel(i+1);
+      if(sawLimit && (notFound || limit || busyErr)) throw new Error('quota');
+      if(busyErr) throw new Error('busy');
+      throw new Error(lastErr);
+    });
+  }
+  tryModel(0)
   .then(function(res){
     busy(false);
     openScan(res.data || {}, res.model);
@@ -1007,26 +1113,79 @@ function onBillFiles(ev){
   });
 }
 function num(v){ var n = parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? 0 : n; }
+// ---- Rate ka hisaab: har line ke kai column aapas mein milaakar sahi value chunna ----
+var GST_SLABS = [0, 0.25, 3, 5, 12, 18, 28, 40];
+function gstTotal(it){
+  var ig = num(it.igst_pct), sg = num(it.sgst_pct), cg = num(it.cgst_pct), g = num(it.gst_pct);
+  if(ig > 0) return ig;
+  if(sg > 0 || cg > 0) return (sg || cg) + (cg || sg);       // sirf ek column dikha to dono barabar maano
+  if([1.5, 2.5, 6, 9, 14, 20].indexOf(g) >= 0) return g*2;  // sirf aadha (SGST) mila tha
+  return g;
+}
+function taxAmt(it){
+  var t = num(it.gst_amt) || num(it.igst_amt);
+  if(t) return t;
+  var s = num(it.sgst_amt), c = num(it.cgst_amt);
+  return (s || c) ? (s || c) + (c || s) : 0;
+}
+function freeQty(it){
+  var f = num(it.free);
+  if(f > 0 && (f === num(it.sch_pct) || f === num(it.disc_pct))) return 0;  // Sch% ko free samajh liya tha
+  return f;
+}
+function analyse(it){
+  var R = num(it.rate), N = num(it.nrate), Q = num(it.qty), A = num(it.amount), T = taxAmt(it);
+  var k = (1 - num(it.sch_pct)/100) * (1 - num(it.disc_pct)/100), g = gstTotal(it);
+  var src = [];
+  if(N > 0) src.push({n:'nrate', v:[N]});
+  if(R > 0) src.push({n:'rate', v:[R*k]});
+  if(Q > 0 && A > 0) src.push({n:'amt', v:[A/Q*k, A/Q, g > 0 ? A/Q/(1+g/100) : 0]});
+  if(Q > 0 && T > 0 && g > 0) src.push({n:'tax', v:[T/(Q*g/100)], tol: 0.011/(Q*g/100)});
+  var best = null;
+  src.forEach(function(s0){ s0.v.forEach(function(c){
+    if(!(c > 0)) return;
+    var sup = [];
+    src.forEach(function(s){ if(s.v.some(function(x){ return x > 0 && Math.abs(x - c) <= Math.max(0.02, c*0.015, s.tol||0); })) sup.push(s.n); });
+    var score = sup.length + (sup.indexOf('nrate') >= 0 ? 0.5 : 0) + (sup.indexOf('rate') >= 0 ? 0.25 : 0);
+    if(!best || score > best.score) best = {c:c, sup:sup, score:score};
+  }); });
+  if(!best) return {base:0, g:g, ok:false, free:freeQty(it)};
+  var base = best.sup.indexOf('nrate') >= 0 ? N : best.sup.indexOf('rate') >= 0 ? R*k : best.c;
+  var ok = best.sup.length >= 2 || src.length === 1;
+  var gNote = '';
+  // GST% galat padha ho to line ke tax amount se sahi slab nikalo
+  if(Q > 0 && T > 0 && base > 0 && best.sup.indexOf('tax') < 0){
+    var gc = T*100/(Q*base);
+    GST_SLABS.forEach(function(s){ if(s > 0 && s !== g && Math.abs(gc - s) <= Math.max(0.4, s*0.06)){ g = s; gNote = 'GST tax amount se'; } });
+  }
+  return {base:base, g:g, ok:ok, free:freeQty(it), gNote:gNote};
+}
 function calcFinal(it, useFree){
-  var rate = num(it.rate), nrate = num(it.nrate), qty = num(it.qty), free = num(it.free);
-  var sch = num(it.sch_pct), d = num(it.disc_pct), g = num(it.gst_pct), amt = num(it.amount);
-  var base;
-  if(nrate > 0 && (rate <= 0 || nrate <= rate*1.001)) base = nrate;            // bill ka N-Rate sabse bharosemand
-  else if(rate > 0) base = rate*(1-sch/100)*(1-d/100);
-  else base = (qty > 0 && amt > 0 ? amt/qty : 0);
-  var v = base*(1+g/100);
-  if(useFree && qty > 0 && free > 0) v = v*qty/(qty+free);
-  return Math.round(v*100)/100;
+  var a = analyse(it), qty = num(it.qty);
+  var v = a.base*(1 + a.g/100);
+  if(useFree && qty > 0 && a.free > 0) v = v*qty/(qty + a.free);
+  return {rate: Math.round(v*100)/100, ok: a.ok && a.base > 0};
 }
 function breakdown(it, useFree){
-  var s = [];
+  var s = [], a = analyse(it);
   if(num(it.rate)) s.push('Rate ₹'+num(it.rate));
   if(num(it.sch_pct)) s.push('Sch −'+num(it.sch_pct)+'%');
   if(num(it.disc_pct)) s.push('Disc −'+num(it.disc_pct)+'%');
-  if(num(it.nrate)) s.push('N-Rate ₹'+num(it.nrate));
-  if(num(it.gst_pct)) s.push('+'+num(it.gst_pct)+'% GST');
-  if(num(it.qty)) s.push('Qty '+num(it.qty)+(num(it.free)?'+'+num(it.free)+' free'+(useFree?'':' (nahi ghataya)'):''));
+  if(a.base) s.push('Net ₹'+(Math.round(a.base*100)/100));
+  s.push('+'+a.g+'% GST'+(a.gNote ? ' ('+a.gNote+')' : ''));
+  if(num(it.qty)) s.push('Qty '+num(it.qty)+(a.free ? '+'+a.free+' free'+(useFree?'':' (nahi ghataya)') : ''));
   return s.join(' · ');
+}
+function billCheck(data){
+  var gt = num(data.grand_total);
+  if(!gt || !scanItems.length) return '';
+  var sum = 0;
+  scanItems.forEach(function(s){ var a = analyse(s.raw); sum += num(s.raw.qty)*a.base*(1 + a.g/100); });
+  sum = Math.round(sum*100)/100;
+  var diff = Math.abs(sum - gt);
+  return diff <= Math.max(3, gt*0.004)
+    ? '<span class="tag same">✓ Bill total ₹'+gt+' = App ₹'+sum+'</span>'
+    : '<span class="tag warn">⚠️ Bill total ₹'+gt+', App ₹'+sum+' — ⚠️ wali lines bill se milao (cash discount ho to farak aata hai)</span>';
 }
 function openScan(data, model){
   var items = Array.isArray(data.items) ? data.items : [];
@@ -1035,7 +1194,7 @@ function openScan(data, model){
   scanItems = items.map(function(it){
     var name = String(it.name).trim().replace(/\s+/g,' ');
     if(it.pack && String(it.pack).trim() && name.toLowerCase().indexOf(String(it.pack).toLowerCase()) < 0) name += ' ' + String(it.pack).trim();
-    return {raw:it, name:name, on:true, rate:0, edited:false};
+    return {raw:it, name:name, on:true, rate:0, ok:true, edited:false};
   });
   fillPartyList();
   document.getElementById('scParty').value = String(data.party||'').trim();
@@ -1045,12 +1204,17 @@ function openScan(data, model){
   if(model) meta.push('Model: '+esc(model));
   meta.push(scanItems.length+' products mile — naam/rate check karke Save karo');
   document.getElementById('scMeta').innerHTML = meta.join(' · ');
+  scanBillData = data;
   recalcScan();
   document.getElementById('scanModal').classList.add('show');
 }
+var scanBillData = {};
 function recalcScan(){
   var useFree = document.getElementById('scFree').checked;
-  scanItems.forEach(function(s){ if(!s.edited) s.rate = calcFinal(s.raw, useFree); });
+  scanItems.forEach(function(s){ var r = calcFinal(s.raw, useFree); s.ok = r.ok; if(!s.edited) s.rate = r.rate; });
+  var bad = scanItems.filter(function(s){ return !s.ok; }).length;
+  document.getElementById('scCheck').innerHTML = billCheck(scanBillData) +
+    (bad ? ' <span class="tag warn">⚠️ '+bad+' line mein shak — bill se milao</span>' : (scanItems.length ? ' <span class="tag new">✓ Sab lines bill ke columns se mil gayi</span>' : ''));
   renderScan();
 }
 function scanTag(s){
@@ -1062,20 +1226,20 @@ function scanTag(s){
 function renderScan(){
   var useFree = document.getElementById('scFree').checked;
   document.getElementById('scList').innerHTML = scanItems.map(function(s, i){
-    return '<div class="scan-item'+(s.on?'':' off')+'" id="sci'+i+'">'+
+    return '<div class="scan-item'+(s.on?'':' off')+(s.ok?'':' warn')+'" id="sci'+i+'">'+
       '<div class="scan-top">'+
         '<input type="checkbox" '+(s.on?'checked':'')+' onchange="scanItems['+i+'].on=this.checked; document.getElementById(\'sci'+i+'\').classList.toggle(\'off\', !this.checked);">'+
         '<input class="sn" value="'+esc(s.name)+'" oninput="scanItems['+i+'].name=this.value; refreshScanTags();">'+
         '<input class="sr" type="number" inputmode="decimal" step="0.01" value="'+s.rate+'" oninput="scanItems['+i+'].rate=Number(this.value)||0; scanItems['+i+'].edited=true; refreshScanTags();">'+
       '</div>'+
-      '<div class="scan-info"><span>'+esc(breakdown(s.raw, useFree))+'</span><span id="sct'+i+'">'+scanTag(s)+'</span></div>'+
+      '<div class="scan-info"><span>'+(s.ok?'':'⚠️ ')+esc(breakdown(s.raw, useFree))+'</span><span id="sct'+i+'">'+scanTag(s)+'</span></div>'+
     '</div>';
   }).join('');
 }
 function refreshScanTags(){
   scanItems.forEach(function(s, i){ var t = document.getElementById('sct'+i); if(t) t.innerHTML = scanTag(s); });
 }
-function closeScan(){ document.getElementById('scanModal').classList.remove('show'); scanItems = []; }
+function closeScan(){ document.getElementById('scanModal').classList.remove('show'); scanItems = []; scanBillData = {}; }
 function saveScan(){
   var party = document.getElementById('scParty').value.trim();
   if(!party){ toast('⚠️ Party ka naam daalo'); document.getElementById('scParty').focus(); return; }
